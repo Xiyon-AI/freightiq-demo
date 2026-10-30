@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
-import { ArrowLeft, BadgeCheck, Building2, Check, CheckCircle2, CircleAlert, CircleDollarSign, ClipboardList, Code2, Download, FileBadge, FileText, Hash, List, LoaderCircle, MapPin, Package, Scale, Send, ShieldCheck, Truck } from "lucide-react";
+import { ArrowLeft, BadgeCheck, Building2, CheckCircle2, CircleAlert, CircleDollarSign, ClipboardList, Code2, Download, FileBadge, FileText, Hash, List, ListChecks, LoaderCircle, MapPin, Package, Scale, Send, ShieldCheck, Sparkles, TriangleAlert, Truck, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import type { LoadDocumentT } from "@/lib/schema";
@@ -63,6 +63,21 @@ const FIELD_META = {
   uncertain_fields: { label: "Uncertain Fields", icon: CircleAlert },
 } satisfies Record<keyof LoadDocumentT, { label: string; icon: typeof FileText }>;
 
+const VALIDATION_GROUPS = ["required", "carrier IDs", "dates", "totals", "sanity ranges", "state codes", "duplicates", "model uncertainty"] as const;
+
+function getValidationGroup(issue: ValidationIssue) {
+  const message = issue.message.toLowerCase();
+  if (message.includes("required") || message.includes("at least one pickup") || message.includes("at least one delivery")) return "required";
+  if (issue.field === "carrier_mc" || issue.field === "carrier_dot") return "carrier IDs";
+  if (message.includes("date")) return "dates";
+  if (message.includes("line item")) return "totals";
+  if (message.includes("expected") && (issue.field === "total_rate" || issue.field === "weight_lbs")) return "sanity ranges";
+  if (issue.field.endsWith(".state")) return "state codes";
+  if (message.includes("already seen")) return "duplicates";
+  if (message.includes("uncertain extraction")) return "model uncertainty";
+  return "required";
+}
+
 const extractionRequests = new WeakMap<File, Promise<ExtractionResponse>>();
 
 function extractFileOnce(file: File): Promise<ExtractionResponse> {
@@ -91,6 +106,8 @@ function extractFileOnce(file: File): Promise<ExtractionResponse> {
 export function DocumentReview({ document, onClose }: { document: ReviewDocument; onClose: () => void }) {
   const [notes, setNotes] = useState("");
   const [message, setMessage] = useState("");
+  const [sentToReview, setSentToReview] = useState(false);
+  const [showAllActivity, setShowAllActivity] = useState(false);
   const [showJson, setShowJson] = useState(false);
   const [fields, setFields] = useState<LoadDocumentT | null>(document.sample ? SAMPLE_FIELDS : null);
   const [fieldConfidence, setFieldConfidence] = useState<Partial<Record<keyof LoadDocumentT, number>>>({});
@@ -98,7 +115,6 @@ export function DocumentReview({ document, onClose }: { document: ReviewDocument
   const [extractState, setExtractState] = useState<ExtractionState>(document.sample ? "success" : "idle");
   const [extractError, setExtractError] = useState("");
   const isPdf = document.filename.toLowerCase().endsWith(".pdf");
-  const issueFields = useMemo(() => new Set(issues.map((issue) => issue.field.split(".")[0])), [issues]);
 
   useEffect(() => {
     if (!document.file || document.sample) return;
@@ -164,6 +180,19 @@ export function DocumentReview({ document, onClose }: { document: ReviewDocument
   const averageConfidence = Object.values(fieldConfidence).length
     ? Math.round(Object.values(fieldConfidence).reduce((sum, value) => sum + (value || 0), 0) / Object.values(fieldConfidence).length)
     : null;
+  const failedCount = issues.filter((issue) => issue.severity === "error").length;
+  const warningCount = issues.filter((issue) => issue.severity === "warning" || issue.severity === "info").length;
+  const flaggedGroups = new Set(issues.map(getValidationGroup));
+  const passedChecks = Math.max(0, VALIDATION_GROUPS.length - flaggedGroups.size);
+  const passRatio = passedChecks / VALIDATION_GROUPS.length;
+  const activity = [
+    { title: "Document uploaded", detail: document.filename, icon: Upload, done: Boolean(document.file || document.sample), alert: false },
+    { title: "Data extracted", detail: extractState === "success" ? "Structured fields are ready" : extractState === "loading" ? "Extraction in progress" : extractState === "error" ? "Extraction failed" : "Waiting for extraction", icon: Sparkles, done: extractState === "success", alert: extractState === "error" },
+    { title: "Validation checks", detail: fields ? `${passedChecks} passed · ${warningCount} warnings · ${failedCount} failed` : "Waiting for extracted data", icon: ListChecks, done: Boolean(fields), alert: failedCount > 0 },
+    { title: issues.length ? "Anomaly detected" : "Anomaly detection", detail: issues.length ? issues[0].message : fields ? "No anomalies detected" : "Waiting for validation", icon: issues.length ? TriangleAlert : CheckCircle2, done: Boolean(fields), alert: issues.length > 0 },
+    { title: sentToReview ? "Sent to review" : "Review queue", detail: sentToReview ? "Added to the current review queue" : "Waiting for broker action", icon: Send, done: sentToReview, alert: false },
+  ];
+  const visibleActivity = showAllActivity ? activity : activity.slice(0, 4);
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-background text-foreground">
@@ -172,7 +201,7 @@ export function DocumentReview({ document, onClose }: { document: ReviewDocument
         <span className="hidden items-center gap-2 rounded-full border border-border px-3 py-1.5 text-xs text-muted-foreground sm:flex"><ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />{document.sample ? "Sample extraction" : extractState === "loading" ? "Extracting document" : extractState === "success" ? "Extraction complete" : "PDF received"}</span>
       </header>
 
-      <main className="grid min-h-0 flex-1 grid-cols-1 gap-4 overflow-auto p-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:p-6">
+      <main className="grid min-h-0 w-full max-w-screen-2xl flex-1 self-center grid-cols-1 gap-4 overflow-auto p-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:p-6">
         <section className="flex min-h-[420px] flex-col overflow-hidden rounded-xl border border-border bg-card">
           <div className="flex items-center justify-between border-b border-border px-4 py-3"><div className="flex items-center gap-2 text-sm font-semibold"><FileText className="h-4 w-4 text-primary" /> Source {isPdf ? "PDF" : "Document"}</div><span className="text-xs text-muted-foreground">{document.sample ? "Sample · 1 page" : "Uploaded file"}</span></div>
           <div className="relative flex flex-1 justify-center overflow-auto bg-muted/40 p-4">
@@ -197,11 +226,52 @@ export function DocumentReview({ document, onClose }: { document: ReviewDocument
               </section>
             </div> : <div className="flex min-h-52 flex-col items-center justify-center rounded-lg border border-dashed border-border px-6 text-center"><FileText className="mb-3 h-8 w-8 text-muted-foreground/60"/><p className="text-sm font-medium">No extracted data</p><p className="mt-1 max-w-xs text-xs text-muted-foreground">Upload a supported PDF to extract structured freight fields.</p></div>}
           </div>
-          <div className="rounded-xl border border-border bg-card p-4"><h2 className="text-sm font-semibold">Validation</h2>{extractState === "loading" ? <div className="mt-4 rounded-lg bg-muted/40 p-3 text-xs text-muted-foreground">Validation will run after extraction.</div> : extractState === "error" ? <div className="mt-4 flex items-start gap-3 rounded-lg bg-rose-50 p-3"><CircleAlert className="mt-0.5 h-4 w-4 shrink-0 text-rose-600"/><div><p className="text-xs font-medium text-rose-800">Extraction unavailable</p><p className="mt-1 text-xs text-rose-700">{extractError}</p></div></div> : fields ? <><div className="mt-4 flex items-start gap-3 rounded-lg bg-emerald-50 p-3"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600"/><div><p className="text-xs font-semibold text-emerald-800">{issues.filter((issue) => issue.severity === "error").length} errors · {issues.filter((issue) => issue.severity === "warning").length} warnings</p><p className="mt-1 text-xs leading-relaxed text-emerald-700">{issues.length ? "Review the flagged fields before approval." : "No validation issues found."}</p></div></div><div className="mt-4 max-h-[35vh] space-y-2 overflow-auto">{issues.length ? issues.map((issue, index) => <div key={`${issue.field}-${index}`} className="rounded-md border border-border p-2"><p className="text-[11px] font-semibold capitalize">{issue.severity} · {issue.field.replaceAll("_", " ")}</p><p className="mt-1 text-[11px] text-muted-foreground">{issue.message}</p></div>) : <p className="flex items-center gap-2 text-xs text-muted-foreground"><Check className="h-3.5 w-3.5 text-emerald-600"/>All checks passed</p>}</div></> : <div className="mt-4 flex items-start gap-3 rounded-lg bg-muted/40 p-3"><CircleAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-600"/><div><p className="text-xs font-medium">Awaiting extraction</p><p className="mt-1 text-xs leading-relaxed text-muted-foreground">Validation results will appear here when extraction is available.</p></div></div>}<div className="mt-5 border-t border-border pt-4"><h3 className="text-xs font-semibold">TMS handoff</h3><p className="mt-2 flex items-center gap-2 text-xs text-muted-foreground"><Truck className="h-4 w-4 text-primary"/>Mock TMS · Demo mode</p></div></div>
+          <div className="min-w-0 space-y-4">
+            <section className="rounded-xl border border-border bg-card p-4">
+              <h2 className="text-sm font-semibold">Validation Checks</h2>
+              {extractState === "error" ? <div className="mt-4 rounded-lg bg-rose-50 p-3 text-xs text-rose-800">{extractError}</div> : <div className="mt-4 flex items-center gap-4 rounded-lg border border-border bg-muted/20 p-3">
+                <div className="relative flex h-[88px] w-[88px] shrink-0 items-center justify-center rounded-full" style={{ background: `conic-gradient(var(--primary) ${fields ? passRatio * 360 : 0}deg, var(--muted) 0deg)` }}>
+                  <div className="flex h-[68px] w-[68px] flex-col items-center justify-center rounded-full bg-card"><span className="text-sm font-bold tabular-nums">{fields ? passedChecks : 0}/{VALIDATION_GROUPS.length}</span><span className="text-[10px] text-muted-foreground">Passed</span></div>
+                </div>
+                <div className="min-w-0 flex-1 space-y-2 text-xs">
+                  <div className="flex items-center justify-between gap-3"><span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-emerald-500"/>Passed</span><span className="font-semibold tabular-nums">{fields ? passedChecks : 0}</span></div>
+                  <div className="flex items-center justify-between gap-3"><span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-amber-500"/>Warnings</span><span className="font-semibold tabular-nums">{fields ? warningCount : 0}</span></div>
+                  <div className="flex items-center justify-between gap-3"><span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-rose-500"/>Failed</span><span className="font-semibold tabular-nums">{fields ? failedCount : 0}</span></div>
+                </div>
+              </div>}
+              {!fields && extractState !== "error" && <p className="mt-3 text-[11px] text-muted-foreground">Validation results will appear after extraction.</p>}
+            </section>
+
+            <section className="rounded-xl border border-border bg-card p-4">
+              <div className="mb-4 flex items-center justify-between gap-2"><h2 className="text-sm font-semibold">Activity Timeline</h2><button type="button" className="text-xs font-medium text-primary hover:underline" onClick={() => setShowAllActivity((value) => !value)}>{showAllActivity ? "Show less" : "View all"}</button></div>
+              <div className="space-y-0">{visibleActivity.map((event, index) => {
+                const Icon = event.icon;
+                const color = event.alert ? "bg-rose-100 text-rose-700" : event.done ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground";
+                return <div key={event.title} className="relative flex gap-3 pb-4 last:pb-0">
+                  {index < visibleActivity.length - 1 && <span className="absolute bottom-0 left-[15px] top-8 w-px bg-border"/>}
+                  <span className={`relative z-[1] flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${color}`}><Icon className="h-4 w-4"/></span>
+                  <div className="min-w-0 pt-0.5"><p className={`text-xs font-semibold ${event.alert ? "text-rose-700" : "text-foreground"}`}>{event.title}</p><p className="mt-1 break-words text-[11px] leading-relaxed text-muted-foreground">{event.detail}</p></div>
+                </div>;
+              })}</div>
+              <div className="mt-4 border-t border-border pt-3"><h3 className="text-xs font-semibold">TMS handoff</h3><p className="mt-2 flex items-center gap-2 text-xs text-muted-foreground"><Truck className="h-4 w-4 text-primary"/>Mock TMS · Demo mode</p></div>
+            </section>
+          </div>
         </section>
       </main>
 
-      <footer className="shrink-0 border-t border-border bg-card px-4 py-3 lg:px-6"><div className="mx-auto grid max-w-screen-2xl gap-4 lg:grid-cols-[190px_minmax(180px,1fr)_auto]"><div className="flex items-center gap-3 rounded-lg bg-muted/40 px-3 py-2"><div className={`flex h-11 w-11 items-center justify-center rounded-full border-2 text-sm font-bold ${averageConfidence !== null ? "border-primary/30 text-primary" : "border-border text-muted-foreground"}`}>{averageConfidence === null ? "—" : `${averageConfidence}%`}</div><div><p className="text-xs font-semibold">Extraction confidence</p><p className="mt-0.5 text-xs text-muted-foreground">{extractState === "loading" ? "Extracting…" : averageConfidence !== null ? "Model estimate · not calibrated" : "Awaiting extraction"}</p></div></div><label className="min-w-0"><span className="mb-1 block text-xs font-semibold">Review notes</span><Textarea value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Add a broker note (optional)" className="min-h-11 resize-none" /></label><div className="flex flex-wrap items-end gap-2"><Button variant="outline" onClick={() => setMessage("Added to the broker review queue.")}><Send className="mr-2 h-4 w-4"/>Send to Review</Button><Button variant="outline" disabled={!fields} onClick={exportCsv}><Download className="mr-2 h-4 w-4"/>Export CSV</Button><Button disabled={!fields} onClick={() => setMessage("Mock TMS accepted the rate confirmation.")}><Truck className="mr-2 h-4 w-4"/>Send to Mock TMS</Button></div></div>{message && <p role="status" className="mx-auto mt-2 max-w-screen-2xl text-right text-xs text-emerald-700">{message}</p>}</footer>
+      <footer className="shrink-0 border-t border-border bg-card px-4 py-3 lg:px-6">
+        <div className="mx-auto grid max-w-screen-2xl items-center gap-4 lg:grid-cols-[250px_minmax(180px,1fr)_auto]">
+          <div className="flex items-center gap-3 rounded-lg bg-muted/40 px-3 py-2">
+            <div className="relative flex h-16 w-16 shrink-0 items-center justify-center rounded-full p-[4px]" style={{ background: `conic-gradient(var(--primary) ${(averageConfidence ?? 0) * 3.6}deg, var(--border) 0deg)` }}>
+              <div className="flex h-full w-full items-center justify-center rounded-full bg-card text-sm font-bold tabular-nums text-primary">{averageConfidence === null ? "—" : `${averageConfidence}%`}</div>
+            </div>
+            <div className="min-w-0"><p className="text-xs font-semibold">Confidence score</p><p className="mt-1 text-xs font-medium text-primary">{averageConfidence === null ? extractState === "loading" ? "Extracting…" : "Awaiting extraction" : issues.length ? "Review flagged fields" : "Ready for broker review"}</p><p className="mt-0.5 text-[10px] text-muted-foreground">Model estimate · not calibrated</p></div>
+          </div>
+          <label className="min-w-0"><span className="mb-1 block text-xs font-semibold">Review notes</span><Textarea value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Add a broker note (optional)" className="min-h-11 resize-none" /></label>
+          <div className="flex flex-wrap items-end gap-2"><Button variant="outline" onClick={() => { setSentToReview(true); setMessage("Added to the broker review queue."); }}><Send className="mr-2 h-4 w-4"/>Send to Review</Button><Button variant="outline" disabled={!fields} onClick={exportCsv}><Download className="mr-2 h-4 w-4"/>Export CSV</Button><Button disabled={!fields} onClick={() => setMessage("Mock TMS accepted the rate confirmation.")}><Truck className="mr-2 h-4 w-4"/>Send to Mock TMS</Button></div>
+        </div>
+        {message && <p role="status" className="mx-auto mt-2 max-w-screen-2xl text-right text-xs text-emerald-700">{message}</p>}
+      </footer>
     </div>
   );
 }
