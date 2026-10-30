@@ -1,4 +1,4 @@
-import type { LoadDocumentT } from '@/lib/schema'
+import type { LoadDocumentT } from './schema'
 
 export type ValidationIssue = {
   field: string

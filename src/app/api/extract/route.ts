@@ -1,6 +1,4 @@
-import Anthropic from '@anthropic-ai/sdk'
-import { LoadDocument, loadDocumentJsonSchema } from '@/lib/schema'
-import { SYSTEM_PROMPT } from '@/lib/prompt'
+import { extractFreightDocument, ExtractionResultMissingError, ExtractionSchemaMismatchError } from '@/lib/extract-document'
 import { validate } from '@/lib/validate'
 
 export const runtime = 'nodejs'
@@ -57,45 +55,24 @@ export async function POST(req: Request) {
   }
 
   try {
-    const data = Buffer.from(await file.arrayBuffer()).toString('base64')
-    const client = new Anthropic({ apiKey })
-    const res = await client.messages.create({
+    const extracted = await extractFreightDocument({
+      data: new Uint8Array(await file.arrayBuffer()),
+      mediaType: isPdf ? 'application/pdf' : file.type as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp',
       model,
-      max_tokens: 2000,
-      system: SYSTEM_PROMPT,
-      tools: [{
-        name: 'record_document',
-        description: 'Record the data extracted from a freight document',
-        input_schema: loadDocumentJsonSchema as any,
-      }],
-      tool_choice: { type: 'tool', name: 'record_document' },
-      messages: [{
-        role: 'user',
-        content: [
-          isPdf
-            ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data } }
-            : { type: 'image', source: { type: 'base64', media_type: file.type as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp', data } },
-          { type: 'text', text: 'Extract this document.' },
-        ],
-      }],
     })
-
-    const tool = res.content.find((block) => block.type === 'tool_use')
-    if (!tool || tool.type !== 'tool_use') {
-      return Response.json({ error: 'No result' }, { status: 502 })
-    }
-
-    const parsed = LoadDocument.safeParse(tool.input)
-    if (!parsed.success) {
-      return Response.json({ error: 'Schema mismatch', details: parsed.error.issues }, { status: 502 })
-    }
 
     return Response.json({
-      fields: parsed.data,
-      issues: validate(parsed.data, getSeenLoadNumbers(formData)),
-      usage: res.usage,
+      fields: extracted.fields,
+      issues: validate(extracted.fields, getSeenLoadNumbers(formData)),
+      usage: extracted.usage,
     })
   } catch (error) {
+    if (error instanceof ExtractionResultMissingError) {
+      return Response.json({ error: 'No result' }, { status: 502 })
+    }
+    if (error instanceof ExtractionSchemaMismatchError) {
+      return Response.json({ error: 'Schema mismatch', details: error.issues }, { status: 502 })
+    }
     console.error('Document extraction request failed', error)
     return Response.json({ error: 'Document extraction failed' }, { status: 502 })
   }

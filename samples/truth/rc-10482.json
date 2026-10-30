@@ -1,0 +1,41 @@
+{
+  "doc_type": "rate_confirmation",
+  "load_number": "LD-572091",
+  "broker_name": "FreightIQ Brokerage",
+  "carrier_name": "Northstar Logistics LLC",
+  "carrier_mc": "123456",
+  "carrier_dot": "654321",
+  "equipment": "53 ft Dry Van",
+  "commodity": "General Freight",
+  "weight_lbs": 42000,
+  "reference_numbers": ["PO-84721", "BOL-99102", "PRO-4438", "PU-9911"],
+  "stops": [
+    {
+      "type": "pickup",
+      "name": "Northstar Warehouse",
+      "address": "100 Main Street",
+      "city": "Dallas",
+      "state": "TX",
+      "date": "2025-04-16",
+      "window_start": "08:00",
+      "window_end": "12:00"
+    },
+    {
+      "type": "delivery",
+      "name": "FreightIQ Distribution Center",
+      "address": "800 Peachtree Street",
+      "city": "Atlanta",
+      "state": "GA",
+      "date": "2025-04-18",
+      "window_start": "08:00",
+      "window_end": "12:00"
+    }
+  ],
+  "line_items": [
+    { "description": "Linehaul", "amount": 2450 },
+    { "description": "Fuel surcharge", "amount": 325 }
+  ],
+  "total_rate": 2775,
+  "currency": "USD",
+  "uncertain_fields": []
+}
