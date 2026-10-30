@@ -4,7 +4,6 @@ import * as React from 'react'
 import { useRouter } from 'next/navigation'
 import { 
   FileText, 
-  Users, 
   Settings, 
   HelpCircle, 
   LayoutDashboard,
@@ -65,12 +64,6 @@ export function CommandPalette() {
               <span>Tickets</span>
             </CommandItem>
             <CommandItem
-              onSelect={() => runCommand(() => router.push('/customers'))}
-            >
-              <Users className="mr-2 h-4 w-4" />
-              <span>Customers</span>
-            </CommandItem>
-            <CommandItem
               onSelect={() => runCommand(() => router.push('/operations'))}
             >
               <Activity className="mr-2 h-4 w-4" />
@@ -107,10 +100,6 @@ export function CommandPalette() {
             <CommandItem>
               <Ticket className="mr-2 h-4 w-4" />
               <span>Create New Ticket</span>
-            </CommandItem>
-            <CommandItem>
-              <Users className="mr-2 h-4 w-4" />
-              <span>Add New Customer</span>
             </CommandItem>
             <CommandItem>
               <Search className="mr-2 h-4 w-4" />

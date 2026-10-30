@@ -8,7 +8,6 @@ import {
   BookOpen,
   SlidersHorizontal,
   Ticket,
-  Database,
   Activity,
   Users,
   UploadCloud,
@@ -19,7 +18,6 @@ import {
   Settings2,
   Mic,
   Mail,
-  AlertTriangle,
   ArrowRight,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -35,7 +33,6 @@ const SECTIONS: SectionMeta[] = [
   { id: 'knowledge-base', icon: BookOpen, titleKey: 'guides.kb.title' },
   { id: 'configuration', icon: SlidersHorizontal, titleKey: 'guides.config.title' },
   { id: 'tickets', icon: Ticket, titleKey: 'guides.tickets.title' },
-  { id: 'customers', icon: Database, titleKey: 'guides.customers.title' },
   { id: 'operations', icon: Activity, titleKey: 'guides.operations.title' },
   { id: 'account', icon: Users, titleKey: 'guides.account.title' },
 ]
@@ -410,20 +407,8 @@ export default function GuidesPage() {
             </div>
           </Section>
 
-          {/* 4 — Customers */}
+          {/* 4 — Operations */}
           <Section meta={SECTIONS[3]!} index={3}>
-            <Lead>{t('guides.customers.desc')}</Lead>
-            <div className="space-y-3">
-              <SubHeading>{t('guides.customers.mapping.title')}</SubHeading>
-              <Lead>{t('guides.customers.mapping.desc')}</Lead>
-            </div>
-            <Callout icon={AlertTriangle} tone="warning">
-              {t('guides.customers.mapping.critical')}
-            </Callout>
-          </Section>
-
-          {/* 5 — Operations */}
-          <Section meta={SECTIONS[4]!} index={4}>
             <Lead>{t('guides.operations.desc')}</Lead>
             <ul className="space-y-2.5">
               <DefItem text={t('guides.operations.sessions')} />
@@ -432,8 +417,8 @@ export default function GuidesPage() {
             </ul>
           </Section>
 
-          {/* 6 — Account */}
-          <Section meta={SECTIONS[5]!} index={5}>
+          {/* 5 — Account */}
+          <Section meta={SECTIONS[4]!} index={4}>
             <Lead>{t('guides.account.desc')}</Lead>
             <ul className="space-y-2.5">
               <DefItem text={t('guides.account.orgs')} />
