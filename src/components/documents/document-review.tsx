@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
-import { ArrowLeft, Check, CheckCircle2, CircleAlert, Code2, Download, FileText, LoaderCircle, Send, ShieldCheck, Truck } from "lucide-react";
+import { ArrowLeft, BadgeCheck, Building2, Check, CheckCircle2, CircleAlert, CircleDollarSign, ClipboardList, Code2, Download, FileBadge, FileText, Hash, List, LoaderCircle, MapPin, Package, Scale, Send, ShieldCheck, Truck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import type { LoadDocumentT } from "@/lib/schema";
@@ -43,7 +43,25 @@ const SAMPLE_FIELDS = {
 } satisfies LoadDocumentT;
 
 type ExtractionState = "idle" | "loading" | "success" | "error";
-type ExtractionResponse = { fields: LoadDocumentT; issues?: ValidationIssue[]; error?: string };
+type ExtractionResponse = { fields: LoadDocumentT; fieldConfidence?: Partial<Record<keyof LoadDocumentT, number>>; issues?: ValidationIssue[]; error?: string };
+
+const FIELD_META = {
+  doc_type: { label: "Document Type", icon: FileBadge },
+  load_number: { label: "Load Number", icon: Hash },
+  broker_name: { label: "Broker Name", icon: Building2 },
+  carrier_name: { label: "Carrier Name", icon: Truck },
+  carrier_mc: { label: "Carrier MC", icon: BadgeCheck },
+  carrier_dot: { label: "Carrier DOT", icon: BadgeCheck },
+  equipment: { label: "Equipment", icon: Package },
+  commodity: { label: "Commodity", icon: Package },
+  weight_lbs: { label: "Weight", icon: Scale },
+  reference_numbers: { label: "Reference Numbers", icon: ClipboardList },
+  stops: { label: "Stops", icon: MapPin },
+  line_items: { label: "Line Items", icon: List },
+  total_rate: { label: "Total Rate", icon: CircleDollarSign },
+  currency: { label: "Currency", icon: CircleDollarSign },
+  uncertain_fields: { label: "Uncertain Fields", icon: CircleAlert },
+} satisfies Record<keyof LoadDocumentT, { label: string; icon: typeof FileText }>;
 
 const extractionRequests = new WeakMap<File, Promise<ExtractionResponse>>();
 
@@ -75,6 +93,7 @@ export function DocumentReview({ document, onClose }: { document: ReviewDocument
   const [message, setMessage] = useState("");
   const [showJson, setShowJson] = useState(false);
   const [fields, setFields] = useState<LoadDocumentT | null>(document.sample ? SAMPLE_FIELDS : null);
+  const [fieldConfidence, setFieldConfidence] = useState<Partial<Record<keyof LoadDocumentT, number>>>({});
   const [issues, setIssues] = useState<ValidationIssue[]>([]);
   const [extractState, setExtractState] = useState<ExtractionState>(document.sample ? "success" : "idle");
   const [extractError, setExtractError] = useState("");
@@ -87,10 +106,12 @@ export function DocumentReview({ document, onClose }: { document: ReviewDocument
     const runExtraction = async () => {
       setExtractState("loading");
       setExtractError("");
+      setFieldConfidence({});
       try {
         const result = await extractFileOnce(document.file as File);
         if (!active) return;
         setFields(result.fields as LoadDocumentT);
+        setFieldConfidence(result.fieldConfidence || {});
         setIssues(Array.isArray(result.issues) ? result.issues as ValidationIssue[] : []);
         setExtractState("success");
       } catch (error) {
@@ -118,13 +139,31 @@ export function DocumentReview({ document, onClose }: { document: ReviewDocument
   };
 
   const renderField = (key: keyof LoadDocumentT, value: LoadDocumentT[keyof LoadDocumentT]) => {
-    const flagged = issueFields.has(key);
-    return <div key={key} className={`rounded-lg border px-3 py-2.5 ${flagged ? "border-amber-300 bg-amber-50/60" : "border-border"}`}>
-      <div className="flex items-start justify-between gap-2"><span className="text-xs font-medium capitalize text-muted-foreground">{key.replaceAll("_", " ")}</span>{flagged && <CircleAlert className="h-3.5 w-3.5 shrink-0 text-amber-600"/>}</div>
-      <p className="mt-1 break-words text-sm">{value === null ? <span className="italic text-muted-foreground">Not found</span> : Array.isArray(value) ? value.length ? `${value.length} ${key === "stops" ? "stops" : key === "line_items" ? "line items" : "items"}` : "None" : String(value)}</p>
-      {issues.filter((issue) => issue.field === key || issue.field.startsWith(`${key}.`)).map((issue, index) => <p key={`${issue.field}-${index}`} className="mt-1 text-xs text-amber-800">{issue.message}</p>)}
+    const fieldIssues = issues.filter((issue) => issue.field === key || issue.field.startsWith(`${key}.`));
+    const flagged = fieldIssues.length > 0;
+    const Icon = FIELD_META[key].icon;
+    const confidence = fieldConfidence[key];
+    let summary: string;
+    if (value === null) summary = "Not found";
+    else if (Array.isArray(value)) {
+      if (key === "reference_numbers") summary = value.length ? value.join(", ") : "None";
+      else if (key === "uncertain_fields") summary = value.length ? `${value.length} fields need review` : "None";
+      else summary = `${value.length} ${key === "stops" ? "stops" : key === "line_items" ? "line items" : "items"}`;
+    } else if (key === "weight_lbs" && typeof value === "number") summary = `${value.toLocaleString()} lbs`;
+    else if (key === "total_rate" && typeof value === "number") summary = `${fields?.currency || "USD"} ${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    else summary = String(value);
+
+    return <div id={`field-${key}`} key={key} className={`grid grid-cols-[minmax(0,1.1fr)_minmax(0,1.4fr)_auto_auto] items-center gap-2 rounded-lg border px-3 py-2.5 transition-colors sm:gap-3 ${flagged ? "border-amber-300 bg-amber-50/60" : "border-border bg-card hover:bg-muted/30"}`}>
+      <div className="flex min-w-0 items-center gap-2"><Icon className="h-4 w-4 shrink-0 text-primary"/><span className="truncate text-xs font-medium">{FIELD_META[key].label}</span></div>
+      <p className={`min-w-0 break-words text-xs sm:text-sm ${value === null ? "italic text-muted-foreground" : "text-foreground"}`}>{summary}</p>
+      <span title="Model-reported estimate; not a calibrated probability" className="rounded-full border border-primary/20 bg-primary/5 px-2 py-1 text-[10px] font-semibold tabular-nums text-primary">{confidence === undefined ? "—" : `${confidence}%`}</span>
+      {flagged ? <CircleAlert className="h-4 w-4 text-amber-600" aria-label="Needs review"/> : <CheckCircle2 className="h-4 w-4 text-emerald-600" aria-label="No validation issues"/>}
     </div>;
   };
+
+  const averageConfidence = Object.values(fieldConfidence).length
+    ? Math.round(Object.values(fieldConfidence).reduce((sum, value) => sum + (value || 0), 0) / Object.values(fieldConfidence).length)
+    : null;
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-background text-foreground">
@@ -143,14 +182,26 @@ export function DocumentReview({ document, onClose }: { document: ReviewDocument
 
         <section className="grid min-h-0 gap-4 xl:grid-cols-[minmax(0,1fr)_230px]">
           <div className="min-h-[350px] overflow-auto rounded-xl border border-border bg-card p-4">
-            <div className="mb-4 flex items-center justify-between gap-3"><div><h2 className="text-sm font-semibold">Structured rate data</h2><p className="mt-1 text-xs text-muted-foreground">{extractState === "loading" ? "OpenRouter is extracting document fields…" : fields ? "Review extracted values and validation flags" : "Extracted fields will appear here"}</p></div>{fields && <Button variant="outline" size="sm" onClick={() => setShowJson((value) => !value)}><Code2 className="mr-1.5 h-3.5 w-3.5"/>{showJson ? "Fields" : "JSON"}</Button>}</div>
-            {extractState === "loading" && !fields ? <div className="flex min-h-52 flex-col items-center justify-center text-sm text-muted-foreground"><LoaderCircle className="mb-3 h-6 w-6 animate-spin text-primary"/>Extracting document data…</div> : extractState === "error" ? <div className="rounded-lg border border-rose-200 bg-rose-50 p-4"><p className="text-sm font-semibold text-rose-800">Extraction failed</p><p className="mt-1 text-xs text-rose-700">{extractError}</p><p className="mt-2 text-xs text-rose-700">Check OPENROUTER_API_KEY, model availability, and your free usage limits. PDFs are limited to 4 MB in this demo.</p></div> : fields ? showJson ? <pre className="overflow-auto rounded-lg bg-muted/40 p-4 text-xs leading-relaxed">{JSON.stringify(fields, null, 2)}</pre> : <div className="grid gap-2 sm:grid-cols-2">{(Object.entries(fields) as [keyof LoadDocumentT, LoadDocumentT[keyof LoadDocumentT]][]).map(([key, value]) => renderField(key, value))}</div> : <div className="flex min-h-52 flex-col items-center justify-center rounded-lg border border-dashed border-border px-6 text-center"><FileText className="mb-3 h-8 w-8 text-muted-foreground/60"/><p className="text-sm font-medium">No extracted data</p><p className="mt-1 max-w-xs text-xs text-muted-foreground">Upload a supported PDF to extract structured freight fields.</p></div>}
+            <div className="mb-4 flex items-center justify-between gap-3"><div><div className="flex items-center gap-2"><h2 className="text-sm font-semibold">Structured rate data</h2>{fields && <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">{Object.keys(fields).length} fields</span>}</div><p className="mt-1 text-xs text-muted-foreground">{extractState === "loading" ? "OpenRouter is extracting document fields…" : fields ? "Review extracted values and validation flags" : "Extracted fields will appear here"}</p></div>{fields && <Button variant="outline" size="sm" onClick={() => setShowJson((value) => !value)}><Code2 className="mr-1.5 h-3.5 w-3.5"/>{showJson ? "Fields" : "JSON"}</Button>}</div>
+            {extractState === "loading" && !fields ? <div className="flex min-h-52 flex-col items-center justify-center text-sm text-muted-foreground"><LoaderCircle className="mb-3 h-6 w-6 animate-spin text-primary"/>Extracting document data…</div> : extractState === "error" ? <div className="rounded-lg border border-rose-200 bg-rose-50 p-4"><p className="text-sm font-semibold text-rose-800">Extraction failed</p><p className="mt-1 text-xs text-rose-700">{extractError}</p><p className="mt-2 text-xs text-rose-700">Check OPENROUTER_API_KEY, model availability, and your free usage limits. PDFs are limited to 4 MB in this demo.</p></div> : fields ? showJson ? <pre className="overflow-auto rounded-lg bg-muted/40 p-4 text-xs leading-relaxed">{JSON.stringify(fields, null, 2)}</pre> : <div className="space-y-5">
+              <div className="grid grid-cols-[minmax(0,1.1fr)_minmax(0,1.4fr)_auto_auto] gap-2 px-3 text-[10px] font-medium uppercase tracking-wide text-muted-foreground sm:gap-3"><span>Field</span><span>Extracted value</span><span title="Model-reported estimate; not a calibrated probability">Confidence*</span><span>Status</span></div>
+              <div className="space-y-2">{(Object.entries(fields) as [keyof LoadDocumentT, LoadDocumentT[keyof LoadDocumentT]][]).map(([key, value]) => renderField(key, value))}</div>
+              <section className="border-t border-border pt-4">
+                <div className="mb-3 flex items-center gap-2"><h3 className="text-sm font-semibold">Anomaly detection</h3><span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${issues.length ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-800"}`}>{issues.length} {issues.length === 1 ? "flag" : "flags"}</span></div>
+                {issues.length ? <div className="space-y-2">{issues.map((issue, index) => {
+                  const rootField = issue.field.split(".")[0] as keyof LoadDocumentT;
+                  const tone = issue.severity === "error" ? "border-rose-200 bg-rose-50/70 text-rose-800" : issue.severity === "warning" ? "border-amber-200 bg-amber-50/70 text-amber-900" : "border-blue-200 bg-blue-50/70 text-blue-900";
+                  return <div key={`${issue.field}-${index}`} className={`flex items-start gap-3 rounded-lg border p-3 ${tone}`}><CircleAlert className="mt-0.5 h-4 w-4 shrink-0"/><div className="min-w-0 flex-1"><p className="text-xs font-semibold">{FIELD_META[rootField]?.label || issue.field}</p><p className="mt-1 text-xs leading-relaxed">{issue.message}</p></div><Button variant="outline" size="sm" className="h-7 shrink-0 px-2 text-[11px]" onClick={() => window.document.getElementById(`field-${rootField}`)?.scrollIntoView({ behavior: "smooth", block: "center" })}>Review</Button></div>;
+                })}</div> : <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50/70 px-3 py-3 text-xs text-emerald-800"><CheckCircle2 className="h-4 w-4 shrink-0"/>No anomalies detected by the current validation rules.</div>}
+                <p className="mt-2 text-[10px] text-muted-foreground">* Model-reported confidence estimates are not calibrated probabilities.</p>
+              </section>
+            </div> : <div className="flex min-h-52 flex-col items-center justify-center rounded-lg border border-dashed border-border px-6 text-center"><FileText className="mb-3 h-8 w-8 text-muted-foreground/60"/><p className="text-sm font-medium">No extracted data</p><p className="mt-1 max-w-xs text-xs text-muted-foreground">Upload a supported PDF to extract structured freight fields.</p></div>}
           </div>
           <div className="rounded-xl border border-border bg-card p-4"><h2 className="text-sm font-semibold">Validation</h2>{extractState === "loading" ? <div className="mt-4 rounded-lg bg-muted/40 p-3 text-xs text-muted-foreground">Validation will run after extraction.</div> : extractState === "error" ? <div className="mt-4 flex items-start gap-3 rounded-lg bg-rose-50 p-3"><CircleAlert className="mt-0.5 h-4 w-4 shrink-0 text-rose-600"/><div><p className="text-xs font-medium text-rose-800">Extraction unavailable</p><p className="mt-1 text-xs text-rose-700">{extractError}</p></div></div> : fields ? <><div className="mt-4 flex items-start gap-3 rounded-lg bg-emerald-50 p-3"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600"/><div><p className="text-xs font-semibold text-emerald-800">{issues.filter((issue) => issue.severity === "error").length} errors · {issues.filter((issue) => issue.severity === "warning").length} warnings</p><p className="mt-1 text-xs leading-relaxed text-emerald-700">{issues.length ? "Review the flagged fields before approval." : "No validation issues found."}</p></div></div><div className="mt-4 max-h-[35vh] space-y-2 overflow-auto">{issues.length ? issues.map((issue, index) => <div key={`${issue.field}-${index}`} className="rounded-md border border-border p-2"><p className="text-[11px] font-semibold capitalize">{issue.severity} · {issue.field.replaceAll("_", " ")}</p><p className="mt-1 text-[11px] text-muted-foreground">{issue.message}</p></div>) : <p className="flex items-center gap-2 text-xs text-muted-foreground"><Check className="h-3.5 w-3.5 text-emerald-600"/>All checks passed</p>}</div></> : <div className="mt-4 flex items-start gap-3 rounded-lg bg-muted/40 p-3"><CircleAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-600"/><div><p className="text-xs font-medium">Awaiting extraction</p><p className="mt-1 text-xs leading-relaxed text-muted-foreground">Validation results will appear here when extraction is available.</p></div></div>}<div className="mt-5 border-t border-border pt-4"><h3 className="text-xs font-semibold">TMS handoff</h3><p className="mt-2 flex items-center gap-2 text-xs text-muted-foreground"><Truck className="h-4 w-4 text-primary"/>Mock TMS · Demo mode</p></div></div>
         </section>
       </main>
 
-      <footer className="shrink-0 border-t border-border bg-card px-4 py-3 lg:px-6"><div className="mx-auto grid max-w-screen-2xl gap-4 lg:grid-cols-[190px_minmax(180px,1fr)_auto]"><div className="flex items-center gap-3 rounded-lg bg-muted/40 px-3 py-2"><div className={`flex h-11 w-11 items-center justify-center rounded-full border-2 text-sm font-bold ${fields ? "border-primary/30 text-primary" : "border-border text-muted-foreground"}`}>{document.sample ? "98.6%" : "—"}</div><div><p className="text-xs font-semibold">Extraction confidence</p><p className="mt-0.5 text-xs text-muted-foreground">{extractState === "loading" ? "Extracting…" : document.sample ? "Demo confidence" : fields ? "Not provided by the model" : "Awaiting extraction"}</p></div></div><label className="min-w-0"><span className="mb-1 block text-xs font-semibold">Review notes</span><Textarea value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Add a broker note (optional)" className="min-h-11 resize-none" /></label><div className="flex flex-wrap items-end gap-2"><Button variant="outline" onClick={() => setMessage("Added to the broker review queue.")}><Send className="mr-2 h-4 w-4"/>Send to Review</Button><Button variant="outline" disabled={!fields} onClick={exportCsv}><Download className="mr-2 h-4 w-4"/>Export CSV</Button><Button disabled={!fields} onClick={() => setMessage("Mock TMS accepted the rate confirmation.")}><Truck className="mr-2 h-4 w-4"/>Send to Mock TMS</Button></div></div>{message && <p role="status" className="mx-auto mt-2 max-w-screen-2xl text-right text-xs text-emerald-700">{message}</p>}</footer>
+      <footer className="shrink-0 border-t border-border bg-card px-4 py-3 lg:px-6"><div className="mx-auto grid max-w-screen-2xl gap-4 lg:grid-cols-[190px_minmax(180px,1fr)_auto]"><div className="flex items-center gap-3 rounded-lg bg-muted/40 px-3 py-2"><div className={`flex h-11 w-11 items-center justify-center rounded-full border-2 text-sm font-bold ${averageConfidence !== null ? "border-primary/30 text-primary" : "border-border text-muted-foreground"}`}>{averageConfidence === null ? "—" : `${averageConfidence}%`}</div><div><p className="text-xs font-semibold">Extraction confidence</p><p className="mt-0.5 text-xs text-muted-foreground">{extractState === "loading" ? "Extracting…" : averageConfidence !== null ? "Model estimate · not calibrated" : "Awaiting extraction"}</p></div></div><label className="min-w-0"><span className="mb-1 block text-xs font-semibold">Review notes</span><Textarea value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Add a broker note (optional)" className="min-h-11 resize-none" /></label><div className="flex flex-wrap items-end gap-2"><Button variant="outline" onClick={() => setMessage("Added to the broker review queue.")}><Send className="mr-2 h-4 w-4"/>Send to Review</Button><Button variant="outline" disabled={!fields} onClick={exportCsv}><Download className="mr-2 h-4 w-4"/>Export CSV</Button><Button disabled={!fields} onClick={() => setMessage("Mock TMS accepted the rate confirmation.")}><Truck className="mr-2 h-4 w-4"/>Send to Mock TMS</Button></div></div>{message && <p role="status" className="mx-auto mt-2 max-w-screen-2xl text-right text-xs text-emerald-700">{message}</p>}</footer>
     </div>
   );
 }

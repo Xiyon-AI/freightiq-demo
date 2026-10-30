@@ -9,6 +9,7 @@ export type ExtractionUsage = {
 
 export type ExtractedFreightDocument = {
   fields: LoadDocumentT
+  fieldConfidence: Partial<Record<keyof LoadDocumentT, number>>
   usage: ExtractionUsage
 }
 
@@ -34,7 +35,25 @@ type OpenRouterResponse = {
 function getResponseSchema() {
   const schema = structuredClone(loadDocumentJsonSchema) as Record<string, unknown>
   delete schema.$schema
-  return schema
+  const properties = schema.properties as Record<string, unknown>
+  const fields = Object.keys(properties)
+  return {
+    type: 'object',
+    properties: {
+      fields: schema,
+      field_confidence: {
+        type: 'object',
+        properties: Object.fromEntries(fields.map((field) => [field, {
+          type: 'number',
+          description: 'Model-estimated confidence from 0 to 100 based on how clearly this value is supported by the document. This is not a calibrated probability.',
+        }])),
+        required: fields,
+        additionalProperties: false,
+      },
+    },
+    required: ['fields', 'field_confidence'],
+    additionalProperties: false,
+  }
 }
 
 export async function extractFreightDocument({
@@ -111,13 +130,24 @@ export async function extractFreightDocument({
     throw new ExtractionSchemaMismatchError([{ message: 'OpenRouter returned invalid JSON.' }])
   }
 
-  const parsed = LoadDocument.safeParse(output)
+  const extracted = output && typeof output === 'object' ? output as {
+    fields?: unknown
+    field_confidence?: Record<string, unknown>
+  } : {}
+  const parsed = LoadDocument.safeParse(extracted.fields)
   if (!parsed.success) {
     throw new ExtractionSchemaMismatchError(parsed.error.issues)
   }
 
+  const fieldConfidence = Object.fromEntries(
+    Object.entries(extracted.field_confidence || {})
+      .filter(([key, value]) => key in parsed.data && typeof value === 'number' && Number.isFinite(value))
+      .map(([key, value]) => [key, Math.max(0, Math.min(100, Math.round(value as number)))])
+  ) as Partial<Record<keyof LoadDocumentT, number>>
+
   return {
     fields: parsed.data,
+    fieldConfidence,
     usage: {
       pages_processed: mediaType === 'application/pdf' ? 1 : 0,
       prompt_tokens: result?.usage?.prompt_tokens,

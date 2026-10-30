@@ -63,6 +63,7 @@ export async function POST(req: Request) {
 
     return Response.json({
       fields: extracted.fields,
+      fieldConfidence: extracted.fieldConfidence,
       issues: validate(extracted.fields, getSeenLoadNumbers(formData)),
       usage: extracted.usage,
     })
