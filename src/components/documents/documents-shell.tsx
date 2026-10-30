@@ -2,11 +2,9 @@
 
 import { useCallback, useState } from "react";
 import { useActiveOrg } from "@/components/providers/OrgProvider";
-import { useDocumentsList } from "@/hooks/use-documents-list";
 import { useDocumentProcessing } from "@/hooks/use-document-processing";
 import { PdfUploadZone } from "./pdf-upload-zone";
 import { ProcessingTracker } from "./processing-tracker";
-import { DocumentLibrary } from "./document-library";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { DocumentReview, type ReviewDocument } from "./document-review";
 
@@ -17,7 +15,6 @@ export function DocumentsShell() {
   const orgId = activeOrg?.id ?? null;
   const { t } = useLanguage();
 
-  const { documents, loading: docsLoading } = useDocumentsList(orgId);
   const { trackedDocs } = useDocumentProcessing(orgId);
   
   const [reviewingDocument, setReviewingDocument] = useState<ReviewDocument | null>(null);
@@ -34,15 +31,6 @@ export function DocumentsShell() {
   );
 
   const handleCancel = useCallback(async (_docId: string) => {}, []);
-
-  const handleDelete = useCallback(async (_docId: string) => {}, []);
-
-  const handleDownload = useCallback(async (_docId: string) => {}, []);
-
-  const handleView = useCallback(async (docId: string) => {
-    const document = documents.find((item) => item.id === docId);
-    if (document) setReviewingDocument({ id: document.id, filename: document.original_filename });
-  }, [documents]);
 
   if (!orgLoading && !orgId) {
     return (
@@ -82,24 +70,6 @@ export function DocumentsShell() {
             onCancel={handleCancel}
           />
 
-          {/* Document library */}
-          <div>
-            <h2 className="text-sm font-semibold text-foreground mb-3">
-              {t('knowledge.documents')}
-              {documents.length > 0 && (
-                <span className="ml-2 text-xs font-normal text-gray-400">
-                  {documents.length} {t('knowledge.total')}
-                </span>
-              )}
-            </h2>
-            <DocumentLibrary
-              documents={documents}
-              loading={docsLoading || orgLoading}
-              onDelete={handleDelete}
-              onDownload={handleDownload}
-              onView={handleView}
-            />
-          </div>
         </div>
       </div>
       </div>

@@ -1,3 +1,6 @@
+"use client";
+
+import { useMemo, useState } from "react";
 import {
   ArrowDownToLine,
   ArrowRight,
@@ -8,6 +11,7 @@ import {
   Filter,
   Inbox,
   Plus,
+  Search,
   UploadCloud,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -26,6 +30,15 @@ const statusStyles: Record<string, string> = {
 };
 
 export default function IntakePage() {
+  const [search, setSearch] = useState("");
+  const filteredItems = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (!query) return intakeItems;
+    return intakeItems.filter((item) =>
+      [item.name, item.type, item.source, item.status].some((value) => value.toLowerCase().includes(query))
+    );
+  }, [search]);
+
   return (
     <div className="min-h-full p-4 lg:p-8">
       <div className="mx-auto max-w-[1500px] space-y-7">
@@ -58,22 +71,26 @@ export default function IntakePage() {
         <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
           <div className="flex flex-col gap-3 border-b border-border p-5 sm:flex-row sm:items-center sm:justify-between">
             <div><h2 className="text-base font-semibold">Recent intake</h2><p className="mt-1 text-xs text-muted-foreground">Documents received across your connected sources</p></div>
-            <div className="flex items-center gap-2"><Button variant="outline" size="sm"><Filter className="mr-1.5 h-3.5 w-3.5" /> Filters</Button><Button variant="ghost" size="sm" className="text-primary">View all <ArrowRight className="ml-1.5 h-3.5 w-3.5" /></Button></div>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <label className="relative block sm:w-64"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"/><input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search documents..." aria-label="Search intake documents" className="h-9 w-full rounded-lg border border-border bg-background pl-9 pr-3 text-sm outline-none transition focus:border-primary/50 focus:ring-2 focus:ring-primary/15"/></label>
+              <Button variant="outline" size="sm"><Filter className="mr-1.5 h-3.5 w-3.5" /> Filters</Button><Button variant="ghost" size="sm" className="text-primary">View all <ArrowRight className="ml-1.5 h-3.5 w-3.5" /></Button>
+            </div>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[740px] text-left text-sm">
               <thead className="bg-muted/30 text-xs font-medium text-muted-foreground"><tr><th className="px-5 py-3">Document</th><th className="px-4 py-3">Type</th><th className="px-4 py-3">Source</th><th className="px-4 py-3">Received</th><th className="px-4 py-3">Status</th><th className="px-5 py-3"><span className="sr-only">Open</span></th></tr></thead>
               <tbody className="divide-y divide-border">
-                {intakeItems.map((item) => <tr key={item.name} className="transition-colors hover:bg-muted/20">
+                {filteredItems.map((item) => <tr key={item.name} className="transition-colors hover:bg-muted/20">
                   <td className="px-5 py-3.5"><div className="flex items-center gap-3"><div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"><FileText className="h-4 w-4" /></div><div className="min-w-0"><p className="max-w-[340px] truncate text-sm font-medium text-foreground">{item.name}</p><p className="mt-0.5 text-xs text-muted-foreground">{item.initials} · Freight document</p></div></div></td>
                   <td className="px-4 py-3.5 text-muted-foreground">{item.type}</td><td className="px-4 py-3.5 text-muted-foreground">{item.source}</td><td className="px-4 py-3.5 text-muted-foreground">{item.date}</td>
                   <td className="px-4 py-3.5"><span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${statusStyles[item.tone]}`}><span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-current" />{item.status}</span></td>
                   <td className="px-5 py-3.5 text-right"><Button variant="ghost" size="sm" aria-label={`Open ${item.name}`}>Open</Button></td>
                 </tr>)}
+                {filteredItems.length === 0 && <tr><td colSpan={6} className="px-5 py-12 text-center text-sm text-muted-foreground">No intake documents match “{search}”.</td></tr>}
               </tbody>
             </table>
           </div>
-          <div className="flex items-center justify-between border-t border-border px-5 py-3 text-xs text-muted-foreground"><span>Showing 4 of 28 documents received today</span><span>Updated just now</span></div>
+          <div className="flex items-center justify-between border-t border-border px-5 py-3 text-xs text-muted-foreground"><span>Showing {filteredItems.length} of 28 documents received today</span><span>Updated just now</span></div>
         </section>
       </div>
     </div>
