@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { BadgeCheck, Check, FileDown, FileText, Settings2, ShieldCheck, Truck } from 'lucide-react'
+import { BadgeCheck, FileDown, FileText, Settings2, ShieldCheck, Truck } from 'lucide-react'
 
 const sections = [
   { id: 'workflow', label: 'Workflow', icon: Settings2 },
@@ -13,10 +13,14 @@ const sections = [
 type SectionId = (typeof sections)[number]['id']
 
 const validationRules = [
-  'Required carrier, load, lane, date, and rate fields are present',
-  'Pickup date is before delivery date',
-  'Linehaul and fuel surcharge match the total rate',
-  'Currency is supported by the demo schema',
+  { name: 'Required fields', check: 'Load number, carrier, at least one pickup and delivery, and total rate', severity: 'Error' },
+  { name: 'MC number', check: '1–8 digits only', severity: 'Warning' },
+  { name: 'DOT number', check: '1–8 digits only', severity: 'Warning' },
+  { name: 'Dates', check: 'Valid calendar dates; delivery is not before pickup', severity: 'Error' },
+  { name: 'Totals', check: 'Line item sum matches total rate within $0.01', severity: 'Error' },
+  { name: 'Sanity ranges', check: 'Rate is $50–$50,000; weight is under 60,000 lb', severity: 'Warning' },
+  { name: 'State codes', check: 'Valid two-letter US state abbreviation', severity: 'Warning' },
+  { name: 'Duplicate load', check: 'Load number was already seen in this session', severity: 'Info' },
 ]
 
 export default function SettingsPage() {
@@ -60,7 +64,7 @@ export default function SettingsPage() {
             {activeSection === 'validation' && (
               <section className="space-y-6">
                 <div><h2 className="text-xl font-bold tracking-tight">Validation rules</h2><p className="mt-1 text-sm text-muted-foreground">Checks shown before a broker approves a rate confirmation.</p></div>
-                <div className="rounded-3xl border border-border/50 bg-card p-6 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] md:p-8"><div className="mb-5 flex items-center gap-3"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600"><ShieldCheck className="h-5 w-5" /></span><div><h3 className="text-sm font-semibold">Broker review checks</h3><p className="text-xs text-muted-foreground">Applied to the included sample record</p></div></div><div className="space-y-4">{validationRules.map((rule) => <p key={rule} className="flex items-start gap-3 text-sm"><Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />{rule}</p>)}</div></div>
+                <div className="rounded-3xl border border-border/50 bg-card p-6 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] md:p-8"><div className="mb-5 flex items-center gap-3"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600"><ShieldCheck className="h-5 w-5" /></span><div><h3 className="text-sm font-semibold">Broker review checks</h3><p className="text-xs text-muted-foreground">Run in TypeScript after extraction. Model uncertainty is also returned as a warning.</p></div></div><div className="divide-y divide-border">{validationRules.map((rule) => <div key={rule.name} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-sm font-medium">{rule.name}</p><p className="mt-0.5 text-xs text-muted-foreground">{rule.check}</p></div><span className={`w-fit rounded-full px-2.5 py-1 text-[10px] font-semibold ${rule.severity === 'Error' ? 'bg-rose-50 text-rose-700' : rule.severity === 'Warning' ? 'bg-amber-50 text-amber-700' : 'bg-blue-50 text-blue-700'}`}>{rule.severity}</span></div>)}</div></div>
               </section>
             )}
 

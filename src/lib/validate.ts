@@ -2,62 +2,106 @@ import type { LoadDocumentT } from '@/lib/schema'
 
 export type ValidationIssue = {
   field: string
+  severity: 'error' | 'warning' | 'info'
   message: string
-  severity: 'error' | 'warning'
 }
 
-function isIsoDate(value: string) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
+const US_STATE_CODES = new Set([
+  'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA',
+  'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD',
+  'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ',
+  'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC',
+  'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY',
+])
+
+function parseIsoDate(value: string): number | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null
   const parsed = new Date(`${value}T00:00:00.000Z`)
-  return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value
+  if (Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== value) return null
+  return parsed.getTime()
 }
 
-function isTime(value: string) {
-  const match = /^(\d{2}):(\d{2})$/.exec(value)
-  return Boolean(match && Number(match[1]) < 24 && Number(match[2]) < 60)
-}
-
-export function validate(document: LoadDocumentT): ValidationIssue[] {
+export function validate(document: LoadDocumentT, seenLoadNumbers: ReadonlySet<string> = new Set()): ValidationIssue[] {
   const issues: ValidationIssue[] = []
-  const add = (field: string, message: string, severity: ValidationIssue['severity'] = 'warning') => {
-    issues.push({ field, message, severity })
+  const add = (field: string, severity: ValidationIssue['severity'], message: string) => {
+    issues.push({ field, severity, message })
   }
 
-  if (!document.load_number) add('load_number', 'Load number is missing.')
-  if (!document.carrier_name) add('carrier_name', 'Carrier name is missing.')
-  if (document.stops.length === 0) add('stops', 'No shipment stops were found.')
+  if (!document.load_number?.trim()) add('load_number', 'error', 'Load number is required.')
+  if (!document.carrier_name?.trim()) add('carrier_name', 'error', 'Carrier name is required.')
+  if (document.total_rate === null) add('total_rate', 'error', 'Total rate is required.')
 
-  document.stops.forEach((stop, index) => {
-    const prefix = `stops.${index}`
-    if (!stop.city && !stop.address) add(`${prefix}.address`, 'Stop location is missing.')
-    if (stop.date && !isIsoDate(stop.date)) add(`${prefix}.date`, 'Date must use YYYY-MM-DD.')
-    if (stop.window_start && !isTime(stop.window_start)) add(`${prefix}.window_start`, 'Time must use 24-hour HH:mm.')
-    if (stop.window_end && !isTime(stop.window_end)) add(`${prefix}.window_end`, 'Time must use 24-hour HH:mm.')
-  })
+  const pickups = document.stops
+    .map((stop, index) => ({ stop, index }))
+    .filter(({ stop }) => stop.type === 'pickup')
+  const deliveries = document.stops
+    .map((stop, index) => ({ stop, index }))
+    .filter(({ stop }) => stop.type === 'delivery')
 
-  const pickupDates = document.stops.filter((stop) => stop.type === 'pickup' && stop.date).map((stop) => stop.date!)
-  const deliveryDates = document.stops.filter((stop) => stop.type === 'delivery' && stop.date).map((stop) => stop.date!)
-  if (pickupDates.some((date) => !isIsoDate(date))) add('stops', 'A pickup date is invalid.')
-  if (deliveryDates.some((date) => !isIsoDate(date))) add('stops', 'A delivery date is invalid.')
-  const firstPickup = pickupDates.find(isIsoDate)
-  const lastDelivery = [...deliveryDates].reverse().find(isIsoDate)
-  if (firstPickup && lastDelivery && firstPickup > lastDelivery) {
-    add('stops', 'Pickup date is after delivery date.', 'error')
-  }
+  if (pickups.length === 0) add('stops', 'error', 'At least one pickup is required.')
+  if (deliveries.length === 0) add('stops', 'error', 'At least one delivery is required.')
 
-  if (document.total_rate !== null && document.line_items.length > 0) {
-    const lineItemTotal = document.line_items.reduce((sum, item) => sum + item.amount, 0)
-    if (Math.round(lineItemTotal * 100) !== Math.round(document.total_rate * 100)) {
-      add('total_rate', 'Line item amounts do not match the total rate.')
+  if (document.load_number?.trim()) {
+    const normalizedLoadNumber = document.load_number.trim().toUpperCase()
+    const seen = new Set([...seenLoadNumbers].map((value) => value.trim().toUpperCase()))
+    if (seen.has(normalizedLoadNumber)) {
+      add('load_number', 'info', 'This load number was already seen in this session.')
     }
   }
-  if (document.total_rate === null) add('total_rate', 'Total rate is missing.')
-  if (document.currency && !/^[A-Z]{3}$/.test(document.currency)) {
-    add('currency', 'Currency should be a three-letter uppercase code.')
+
+  if (document.carrier_mc && !/^\d{1,8}$/.test(document.carrier_mc)) {
+    add('carrier_mc', 'warning', 'Carrier MC number must contain 1 to 8 digits.')
   }
-  if (document.uncertain_fields.length > 0) {
-    document.uncertain_fields.forEach(({ field, reason }) => add(field, reason))
+  if (document.carrier_dot && !/^\d{1,8}$/.test(document.carrier_dot)) {
+    add('carrier_dot', 'warning', 'Carrier DOT number must contain 1 to 8 digits.')
   }
+
+  const parsedStopDates = new Map<number, number>()
+  document.stops.forEach((stop, index) => {
+    if (stop.date !== null) {
+      const timestamp = parseIsoDate(stop.date)
+      if (timestamp === null) {
+        add(`stops.${index}.date`, 'error', 'Date must be a valid calendar date in YYYY-MM-DD format.')
+      } else {
+        parsedStopDates.set(index, timestamp)
+      }
+    }
+
+    if (stop.state && !US_STATE_CODES.has(stop.state.toUpperCase())) {
+      add(`stops.${index}.state`, 'warning', 'State code must be a valid two-letter US state abbreviation.')
+    }
+  })
+
+  const firstPickupDate = pickups
+    .map(({ index }) => parsedStopDates.get(index))
+    .find((date): date is number => date !== undefined)
+  if (firstPickupDate !== undefined) {
+    deliveries.forEach(({ index }) => {
+      const deliveryDate = parsedStopDates.get(index)
+      if (deliveryDate !== undefined && deliveryDate < firstPickupDate) {
+        add(`stops.${index}.date`, 'error', 'Delivery date cannot be before the pickup date.')
+      }
+    })
+  }
+
+  if (document.total_rate !== null) {
+    if (document.total_rate < 50 || document.total_rate > 50_000) {
+      add('total_rate', 'warning', 'Total rate is outside the expected $50 to $50,000 range.')
+    }
+
+    const lineItemTotal = document.line_items.reduce((sum, item) => sum + item.amount, 0)
+    if (Math.round(Math.abs(lineItemTotal - document.total_rate) * 100) > 1) {
+      add('total_rate', 'error', 'Line item amounts do not match the total rate within one cent.')
+    }
+  }
+
+  if (document.weight_lbs !== null && document.weight_lbs >= 60_000) {
+    add('weight_lbs', 'warning', 'Weight is at or above the expected 60,000 lb limit.')
+  }
+
+  document.uncertain_fields.forEach(({ field, reason }) => {
+    add(field, 'warning', `Uncertain extraction: ${reason}`)
+  })
 
   return issues
 }

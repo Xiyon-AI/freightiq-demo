@@ -9,6 +9,23 @@ export const maxDuration = 60
 const MAX_FILE_SIZE = 4 * 1024 * 1024
 const SUPPORTED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp'])
 
+function getSeenLoadNumbers(formData: FormData): Set<string> {
+  const value = formData.get('seen_load_numbers')
+  if (typeof value !== 'string') return new Set()
+
+  try {
+    const parsed: unknown = JSON.parse(value)
+    if (!Array.isArray(parsed)) return new Set()
+    return new Set(
+      parsed
+        .filter((loadNumber): loadNumber is string => typeof loadNumber === 'string')
+        .slice(0, 1000),
+    )
+  } catch {
+    return new Set()
+  }
+}
+
 export async function POST(req: Request) {
   let formData: FormData
   try {
@@ -75,7 +92,7 @@ export async function POST(req: Request) {
 
     return Response.json({
       fields: parsed.data,
-      issues: validate(parsed.data),
+      issues: validate(parsed.data, getSeenLoadNumbers(formData)),
       usage: res.usage,
     })
   } catch (error) {
