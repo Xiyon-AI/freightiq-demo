@@ -11,10 +11,10 @@ type UploadStage = "idle" | "uploading-storage" | "triggering-index" | "done" | 
 interface PdfUploadZoneProps {
   orgId: string;
   disabled?: boolean;
-  onUploadComplete: (docId: string, filename: string) => void;
+  onUploadComplete: (docId: string, filename: string, file: File) => void;
 }
 
-export function PdfUploadZone({ orgId: _orgId, disabled, onUploadComplete: _onUploadComplete }: PdfUploadZoneProps) {
+export function PdfUploadZone({ orgId: _orgId, disabled, onUploadComplete }: PdfUploadZoneProps) {
   const { t } = useLanguage();
   const [stage, setStage] = useState<UploadStage>("idle");
   const [fileName, setFileName] = useState("");
@@ -30,7 +30,12 @@ export function PdfUploadZone({ orgId: _orgId, disabled, onUploadComplete: _onUp
     setErrorMsg("");
   }, []);
 
-  const upload = useCallback(async (_file: File) => {}, []);
+  const upload = useCallback(async (file: File) => {
+    setFileName(file.name);
+    setErrorMsg("");
+    setStage("done");
+    onUploadComplete(`local-${Date.now()}`, file.name, file);
+  }, [onUploadComplete]);
 
   const handleFiles = useCallback(
     (fileList: FileList | null) => {

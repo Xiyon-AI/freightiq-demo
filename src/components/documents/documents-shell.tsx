@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import dynamic from "next/dynamic";
 import { useActiveOrg } from "@/components/providers/OrgProvider";
 import { useDocumentsList } from "@/hooks/use-documents-list";
 import { useDocumentProcessing } from "@/hooks/use-document-processing";
@@ -9,11 +8,7 @@ import { PdfUploadZone } from "./pdf-upload-zone";
 import { ProcessingTracker } from "./processing-tracker";
 import { DocumentLibrary } from "./document-library";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
-
-const PdfViewerModal = dynamic(
-  () => import("./pdf-viewer-modal").then((mod) => mod.PdfViewerModal),
-  { ssr: false }
-);
+import { DocumentReview, type ReviewDocument } from "./document-review";
 
 const MAX_CONCURRENT_UPLOADS = 3;
 
@@ -25,14 +20,16 @@ export function DocumentsShell() {
   const { documents, loading: docsLoading } = useDocumentsList(orgId);
   const { trackedDocs } = useDocumentProcessing(orgId);
   
-  const [viewingPdf, setViewingPdf] = useState<{ url: string; filename: string } | null>(null);
+  const [reviewingDocument, setReviewingDocument] = useState<ReviewDocument | null>(null);
 
   const activeUploads = trackedDocs.filter(
     (d) => !["indexed", "error", "deleted"].includes(d.status)
   ).length;
 
   const handleUploadComplete = useCallback(
-    (_docId: string, _filename: string) => {},
+    (docId: string, filename: string, file: File) => {
+      setReviewingDocument({ id: docId, filename, file, url: URL.createObjectURL(file) });
+    },
     []
   );
 
@@ -42,7 +39,10 @@ export function DocumentsShell() {
 
   const handleDownload = useCallback(async (_docId: string) => {}, []);
 
-  const handleView = useCallback(async (_docId: string) => {}, []);
+  const handleView = useCallback(async (docId: string) => {
+    const document = documents.find((item) => item.id === docId);
+    if (document) setReviewingDocument({ id: document.id, filename: document.original_filename });
+  }, [documents]);
 
   if (!orgLoading && !orgId) {
     return (
@@ -104,13 +104,10 @@ export function DocumentsShell() {
       </div>
       </div>
 
-      {/* PDF Viewer Modal */}
-      <PdfViewerModal
-        isOpen={!!viewingPdf}
-        onClose={() => setViewingPdf(null)}
-        pdfUrl={viewingPdf?.url || ""}
-        filename={viewingPdf?.filename || ""}
-      />
+      {reviewingDocument && <DocumentReview document={reviewingDocument} onClose={() => {
+        if (reviewingDocument.url?.startsWith("blob:")) URL.revokeObjectURL(reviewingDocument.url);
+        setReviewingDocument(null);
+      }} />}
     </>
   );
 }
