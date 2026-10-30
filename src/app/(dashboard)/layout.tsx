@@ -1,8 +1,6 @@
 import { Sidebar } from '@/components/dashboard/Sidebar'
-import { DashboardSessionGuard } from '@/components/dashboard/DashboardSessionGuard'
 import { TopBar } from '@/components/dashboard/TopBar'
 import { CommandPalette } from '@/components/command-palette'
-import { OrgProvider } from '@/components/providers/OrgProvider'
 import { LanguageProvider } from '@/lib/i18n/LanguageContext'
 
 export default function DashboardLayout({
@@ -11,9 +9,7 @@ export default function DashboardLayout({
   children: React.ReactNode
 }) {
   return (
-    <DashboardSessionGuard>
-      <OrgProvider>
-        <LanguageProvider>
+    <LanguageProvider>
           <CommandPalette />
           <div className="flex h-screen bg-muted/30">
             <TopBar />
@@ -22,8 +18,6 @@ export default function DashboardLayout({
               {children}
             </main>
           </div>
-        </LanguageProvider>
-      </OrgProvider>
-    </DashboardSessionGuard>
+    </LanguageProvider>
   )
 }

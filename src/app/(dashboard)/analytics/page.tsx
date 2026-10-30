@@ -26,16 +26,13 @@ const weeklyActivity = [
 ];
 
 const documentTypes = [
-  { name: "Invoices", total: 418, percent: 42, color: "bg-primary" },
-  { name: "Bills of lading", total: 276, percent: 28, color: "bg-blue-500" },
-  { name: "Proof of delivery", total: 192, percent: 19, color: "bg-violet-500" },
-  { name: "Other documents", total: 108, percent: 11, color: "bg-amber-500" },
+  { name: "Auto-validated", total: 782, percent: 78.7, color: "bg-primary" },
+  { name: "Needs broker review", total: 161, percent: 16.2, color: "bg-blue-500" },
+  { name: "Sent to mock TMS", total: 51, percent: 5.1, color: "bg-emerald-500" },
 ];
 
 const topWorkflows = [
-  { name: "Invoice processing", runs: 324, rate: "98.8%", avg: "38 sec", icon: FileText, color: "bg-blue-50 text-blue-600" },
-  { name: "Proof of delivery review", runs: 186, rate: "96.2%", avg: "52 sec", icon: FileCheck2, color: "bg-emerald-50 text-emerald-600" },
-  { name: "Rate confirmation capture", runs: 92, rate: "94.6%", avg: "44 sec", icon: PieChart, color: "bg-violet-50 text-violet-600" },
+  { name: "Rate confirmation extraction", runs: 92, rate: "94.6%", avg: "44 sec", icon: FileCheck2, color: "bg-blue-50 text-blue-600" },
 ];
 
 export default function AnalyticsPage() {
@@ -50,15 +47,15 @@ export default function AnalyticsPage() {
         </div>
 
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="Analytics summary">
-          <Metric icon={<FileText className="h-4 w-4" />} label="Documents received" value="994" change="12.8%" detail="vs previous 7 days" direction="up" tint="text-primary" />
-          <Metric icon={<CheckCircle2 className="h-4 w-4" />} label="Successfully processed" value="927" change="4.2%" detail="vs previous 7 days" direction="up" tint="text-emerald-600" />
-          <Metric icon={<TriangleAlert className="h-4 w-4" />} label="Flagged for review" value="67" change="2.1%" detail="vs previous 7 days" direction="down" tint="text-amber-600" />
-          <Metric icon={<Clock3 className="h-4 w-4" />} label="Average processing time" value="46 sec" change="8.6%" detail="faster than previous week" direction="up" tint="text-violet-600" />
+          <Metric icon={<FileText className="h-4 w-4" />} label="Rate confirmations received" value="994" change="12.8%" detail="vs previous 7 days" direction="up" tint="text-primary" />
+          <Metric icon={<CheckCircle2 className="h-4 w-4" />} label="Validated records" value="927" change="4.2%" detail="vs previous 7 days" direction="up" tint="text-emerald-600" />
+          <Metric icon={<TriangleAlert className="h-4 w-4" />} label="Broker review needed" value="67" change="2.1%" detail="vs previous 7 days" direction="down" tint="text-amber-600" />
+          <Metric icon={<Clock3 className="h-4 w-4" />} label="Average review prep" value="46 sec" change="8.6%" detail="faster than previous week" direction="up" tint="text-violet-600" />
         </section>
 
         <section className="grid gap-4 xl:grid-cols-[1.65fr_1fr]">
           <div className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
-            <div className="flex items-start justify-between"><div><h2 className="text-sm font-semibold">Document volume</h2><p className="mt-1 text-xs text-muted-foreground">Documents received and processed this week</p></div><Button variant="ghost" size="icon" aria-label="More chart options"><MoreHorizontal className="h-4 w-4" /></Button></div>
+            <div className="flex items-start justify-between"><div><h2 className="text-sm font-semibold">Rate confirmation volume</h2><p className="mt-1 text-xs text-muted-foreground">PDFs received and validated this week</p></div><Button variant="ghost" size="icon" aria-label="More chart options"><MoreHorizontal className="h-4 w-4" /></Button></div>
             <div className="mt-6 flex items-center gap-5 text-xs"><span className="flex items-center gap-2 text-muted-foreground"><span className="h-2.5 w-2.5 rounded-sm bg-primary" /> Received</span><span className="flex items-center gap-2 text-muted-foreground"><span className="h-2.5 w-2.5 rounded-sm bg-primary/30" /> Processed</span></div>
             <div className="mt-4 grid h-56 grid-cols-7 items-end gap-3 border-b border-border pb-2 sm:gap-5">
               {weeklyActivity.map((item) => <div key={item.day} className="flex h-full flex-col items-center justify-end gap-2"><div className="flex h-full w-full max-w-12 items-end justify-center gap-1"><div className="w-1/2 rounded-t-md bg-primary/30" style={{ height: `${(item.processed / maxActivity) * 90}%` }} /><div className="w-1/2 rounded-t-md bg-primary" style={{ height: `${(item.received / maxActivity) * 90}%` }} /></div><span className="text-[11px] text-muted-foreground">{item.day}</span></div>)}
@@ -67,15 +64,15 @@ export default function AnalyticsPage() {
           </div>
 
           <div className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
-            <div><h2 className="text-sm font-semibold">Documents by type</h2><p className="mt-1 text-xs text-muted-foreground">Breakdown of received documents</p></div>
-            <div className="mt-6 flex items-center justify-center"><div className="relative flex h-40 w-40 items-center justify-center rounded-full" style={{ background: "conic-gradient(var(--color-primary) 0% 42%, #3b82f6 42% 70%, #8b5cf6 70% 89%, #f59e0b 89% 100%)" }}><div className="flex h-28 w-28 flex-col items-center justify-center rounded-full bg-card"><span className="text-2xl font-bold">994</span><span className="text-[11px] text-muted-foreground">documents</span></div></div></div>
+            <div><h2 className="text-sm font-semibold">Processing outcomes</h2><p className="mt-1 text-xs text-muted-foreground">Rate confirmation status breakdown</p></div>
+            <div className="mt-6 flex items-center justify-center"><div className="relative flex h-40 w-40 items-center justify-center rounded-full" style={{ background: "conic-gradient(var(--color-primary) 0% 78.7%, #3b82f6 78.7% 94.9%, #10b981 94.9% 100%)" }}><div className="flex h-28 w-28 flex-col items-center justify-center rounded-full bg-card"><span className="text-2xl font-bold">994</span><span className="text-[11px] text-muted-foreground">confirmations</span></div></div></div>
             <div className="mt-5 space-y-3">{documentTypes.map((item) => <div key={item.name} className="flex items-center justify-between text-xs"><span className="flex items-center gap-2 text-muted-foreground"><span className={`h-2.5 w-2.5 rounded-sm ${item.color}`} />{item.name}</span><span className="font-medium text-foreground">{item.total} <span className="ml-1 text-muted-foreground">{item.percent}%</span></span></div>)}</div>
           </div>
         </section>
 
         <section className="grid gap-4 xl:grid-cols-[1.4fr_1fr]">
           <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-            <div className="flex items-center justify-between border-b border-border p-5"><div><h2 className="text-sm font-semibold">Workflow performance</h2><p className="mt-1 text-xs text-muted-foreground">Automation runs over the last 7 days</p></div><Button variant="ghost" size="sm" className="text-primary">View workflows <ArrowRight className="ml-1.5 h-4 w-4" /></Button></div>
+            <div className="flex items-center justify-between border-b border-border p-5"><div><h2 className="text-sm font-semibold">Extraction workflow</h2><p className="mt-1 text-xs text-muted-foreground">Rate confirmation runs over the last 7 days</p></div><Button variant="ghost" size="sm" className="text-primary">View workflow <ArrowRight className="ml-1.5 h-4 w-4" /></Button></div>
             <div className="divide-y divide-border">{topWorkflows.map((workflow) => { const Icon = workflow.icon; return <div key={workflow.name} className="grid gap-3 px-5 py-4 sm:grid-cols-[minmax(0,1fr)_90px_90px_90px] sm:items-center"><div className="flex min-w-0 items-center gap-3"><span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${workflow.color}`}><Icon className="h-4 w-4" /></span><span className="truncate text-xs font-medium">{workflow.name}</span></div><MetricCell label="Runs" value={String(workflow.runs)} /><MetricCell label="Success rate" value={workflow.rate} green /><MetricCell label="Avg. time" value={workflow.avg} /></div>; })}</div>
           </div>
 

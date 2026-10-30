@@ -3,8 +3,6 @@ import {
   Check,
   ChevronRight,
   Clock3,
-  FileCheck2,
-  FileText,
   MoreHorizontal,
   Play,
   Plus,
@@ -16,9 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 
 const workflows = [
-  { name: "Invoice processing", description: "Extract invoice details, validate totals, and prepare records for export.", icon: FileText, trigger: "When an invoice is received", runs: "324 runs", success: "98.8%", updated: "Updated 2 hours ago", active: true, color: "text-blue-600 bg-blue-50" },
-  { name: "Proof of delivery review", description: "Check delivery documents for signatures and shipment references.", icon: FileCheck2, trigger: "When a delivery document arrives", runs: "186 runs", success: "96.2%", updated: "Updated yesterday", active: true, color: "text-emerald-600 bg-emerald-50" },
-  { name: "Rate confirmation capture", description: "Capture carrier, lane, and rate information from confirmations.", icon: Workflow, trigger: "When a rate confirmation is received", runs: "92 runs", success: "94.6%", updated: "Updated Oct 26", active: false, color: "text-violet-600 bg-violet-50" },
+  { name: "Rate confirmation extraction", description: "Read carrier, load, lane, dates, equipment, and agreed rate from a carrier PDF. Validate the extracted record before broker approval.", icon: Workflow, trigger: "When a rate confirmation PDF is added", runs: "92 runs", success: "94.6%", updated: "Demo workflow", active: true, color: "text-blue-600 bg-blue-50" },
 ];
 
 export default function AutomationPage() {
@@ -29,21 +25,21 @@ export default function AutomationPage() {
           <div>
             <div className="mb-2 flex items-center gap-2 text-xs font-medium text-muted-foreground"><Workflow className="h-4 w-4" /> Document operations</div>
             <h1 className="text-2xl font-bold tracking-tight text-foreground">Automation</h1>
-            <p className="mt-1 text-sm text-muted-foreground">Build and manage workflows that process your freight documents.</p>
+            <p className="mt-1 text-sm text-muted-foreground">Review the first demo workflow for carrier rate confirmation PDFs.</p>
           </div>
           <Button><Plus className="mr-1.5 h-4 w-4" /> Create workflow</Button>
         </div>
 
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="Automation overview">
-          <Metric icon={<Workflow className="h-4 w-4" />} label="Active workflows" value="2" detail="1 workflow paused" tint="text-primary" />
-          <Metric icon={<Zap className="h-4 w-4" />} label="Runs this month" value="602" detail="↑ 18% from last month" tint="text-amber-600" />
-          <Metric icon={<Check className="h-4 w-4" />} label="Successful runs" value="98.1%" detail="Across all workflows" tint="text-emerald-600" />
-          <Metric icon={<Clock3 className="h-4 w-4" />} label="Time saved" value="41 hrs" detail="Estimated this month" tint="text-violet-600" />
+          <Metric icon={<Workflow className="h-4 w-4" />} label="Demo workflow" value="1" detail="Rate confirmations only" tint="text-primary" />
+          <Metric icon={<Zap className="h-4 w-4" />} label="Sample runs" value="92" detail="Using demo documents" tint="text-amber-600" />
+          <Metric icon={<Check className="h-4 w-4" />} label="Validation pass rate" value="94.6%" detail="Sample workflow data" tint="text-emerald-600" />
+          <Metric icon={<Clock3 className="h-4 w-4" />} label="Handoff target" value="Mock TMS" detail="No external connection" tint="text-violet-600" />
         </section>
 
         <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
           <div className="flex flex-col gap-3 border-b border-border p-5 sm:flex-row sm:items-center sm:justify-between">
-            <div><h2 className="text-base font-semibold">Your workflows</h2><p className="mt-1 text-xs text-muted-foreground">Automations configured for your organization</p></div>
+            <div><h2 className="text-base font-semibold">First demo workflow</h2><p className="mt-1 text-xs text-muted-foreground">Rate confirmation extraction and validation</p></div>
             <Button variant="outline" size="sm"><Settings2 className="mr-1.5 h-3.5 w-3.5" /> Workflow settings</Button>
           </div>
           <div className="divide-y divide-border">
@@ -56,16 +52,16 @@ export default function AutomationPage() {
               </article>;
             })}
           </div>
-          <div className="flex items-center justify-between border-t border-border px-5 py-3 text-xs text-muted-foreground"><span>Showing 3 workflows</span><button className="inline-flex items-center gap-1 font-medium text-primary">Automation history <ArrowRight className="h-3.5 w-3.5" /></button></div>
+          <div className="flex items-center justify-between border-t border-border px-5 py-3 text-xs text-muted-foreground"><span>Showing 1 demo workflow</span><span className="inline-flex items-center gap-1 font-medium text-muted-foreground">CSV export and mock TMS handoff included <ArrowRight className="h-3.5 w-3.5" /></span></div>
         </section>
 
         <section className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
           <div className="rounded-2xl border border-border bg-card p-5 shadow-sm"><div className="flex items-center justify-between"><div><h2 className="text-sm font-semibold">Recent activity</h2><p className="mt-1 text-xs text-muted-foreground">Latest workflow runs across your workspace</p></div><Button variant="ghost" size="sm" className="text-primary">View history <ChevronRight className="ml-1 h-4 w-4" /></Button></div><div className="mt-4 space-y-4">
-            <ActivityRow title="Invoice processing completed" detail="Northstar Logistics · Invoice 10482.pdf" time="Today, 10:42 AM" status="Completed" tone="green" />
-            <ActivityRow title="Proof of delivery review completed" detail="Harbor Freight · POD_8831.pdf" time="Today, 10:18 AM" status="Completed" tone="green" />
-            <ActivityRow title="Invoice flagged for review" detail="Summit Transport · Invoice 33019.pdf" time="Today, 9:56 AM" status="Needs review" tone="amber" />
+            <ActivityRow title="Rate confirmation validated" detail="Northstar Logistics · RC-10482.pdf" time="Today, 10:42 AM" status="Ready to review" tone="green" />
+            <ActivityRow title="Rate sent to mock TMS" detail="Harbor Freight · RC-8831.pdf" time="Today, 10:18 AM" status="Accepted" tone="green" />
+            <ActivityRow title="Rate total flagged for review" detail="Summit Transport · RC-33019.pdf" time="Today, 9:56 AM" status="Needs review" tone="amber" />
           </div></div>
-          <div className="rounded-2xl border border-border bg-card p-5 shadow-sm"><div className="flex items-center gap-2"><div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600"><ShieldCheck className="h-4 w-4" /></div><h2 className="text-sm font-semibold">Automation health</h2></div><div className="mt-5 flex items-end justify-between"><div><p className="text-3xl font-bold tracking-tight">99.2%</p><p className="mt-1 text-xs text-muted-foreground">Successful runs, last 30 days</p></div><span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700">All systems operational</span></div><div className="mt-5 h-2 overflow-hidden rounded-full bg-muted"><div className="h-full w-[99.2%] rounded-full bg-emerald-500" /></div><div className="mt-3 flex justify-between text-xs text-muted-foreground"><span>Completed 596</span><span>Needs review 6</span></div></div>
+          <div className="rounded-2xl border border-border bg-card p-5 shadow-sm"><div className="flex items-center gap-2"><div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600"><ShieldCheck className="h-4 w-4" /></div><h2 className="text-sm font-semibold">Demo handoff health</h2></div><div className="mt-5 flex items-end justify-between"><div><p className="text-3xl font-bold tracking-tight">98.9%</p><p className="mt-1 text-xs text-muted-foreground">Mock TMS acceptance rate</p></div><span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700">Demo mode</span></div><div className="mt-5 h-2 overflow-hidden rounded-full bg-muted"><div className="h-full w-[98.9%] rounded-full bg-emerald-500" /></div><div className="mt-3 flex justify-between text-xs text-muted-foreground"><span>Accepted 91</span><span>Needs review 1</span></div></div>
         </section>
       </div>
     </div>

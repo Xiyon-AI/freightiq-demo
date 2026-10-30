@@ -4,7 +4,6 @@ import { useCallback } from 'react'
 import Link from 'next/link'
 import { Home, Inbox, Files, Workflow, BookOpen, ChartNoAxesColumn, Settings } from 'lucide-react'
 import { usePathname } from 'next/navigation'
-import { useLanguage } from '@/lib/i18n/LanguageContext'
 import { SidebarOrgSwitcher } from './SidebarOrgSwitcher'
 
 interface NavItemProps {
@@ -42,8 +41,6 @@ function NavItem({ icon, label, href = "#", badge, active, onPrefetch }: NavItem
 
 export function Sidebar() {
   const pathname = usePathname()
-  const { t } = useLanguage()
-
   // Prefetch dashboard routes on hover.
   const prefetchRoute = useCallback((_href: string) => {}, [])
 
@@ -65,38 +62,6 @@ export function Sidebar() {
         <SidebarOrgSwitcher />
       </div>
 
-      {/* Usage Card */}
-      {/* <div className="p-4 border-t border-border">
-        <div className="bg-muted/30 rounded-lg p-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-semibold text-foreground">{t('sidebar.starterUsage')}</span>
-            <span className="text-xs text-neutral-500">{t('sidebar.free')}</span>
-          </div>
-          
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-neutral-600">{t('sidebar.storage')}</span>
-              <span className="text-foreground font-medium">2.5 / 5 GB</span>
-            </div>
-            <Progress value={50} className="h-1.5" />
-          </div>
-
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-neutral-600">{t('sidebar.apiCalls')}</span>
-              <span className="text-foreground font-medium">1.2k / 10k</span>
-            </div>
-            <Progress value={12} className="h-1.5" />
-          </div>
-
-          <Link 
-            href="/upgrade" 
-            className="block w-full text-center px-3 py-2 bg-accent hover:bg-accent-hover text-black text-xs font-bold rounded-md transition-colors mt-3 shadow-sm"
-          >
-            {t('sidebar.upgradePlan')}
-          </Link>
-        </div>
-      </div> */}
     </aside>
   )
 }

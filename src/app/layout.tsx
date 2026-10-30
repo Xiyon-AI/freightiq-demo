@@ -22,11 +22,11 @@ const notoSansBengali = Noto_Sans_Bengali({
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'),
   title: {
-    default: "FreightIQ - AI Voice Agent Platform",
+    default: "FreightIQ - Rate Confirmation Operations",
     template: "%s | FreightIQ"
   },
-  description: "Uncover the Untapped Potential of Your Growth to Connect with Clients. AI-powered voice agent platform for modern businesses.",
-  keywords: ["voice agent", "AI", "customer service", "automation", "voice AI", "customer support", "business growth"],
+  description: "A freight broker workspace for rate confirmation extraction, validation, human review, CSV export, and mock TMS handoff.",
+  keywords: ["freight brokerage", "rate confirmation", "document extraction", "carrier rates", "TMS", "logistics operations"],
   authors: [{ name: "FreightIQ Team" }],
   creator: "FreightIQ",
   publisher: "FreightIQ",
@@ -43,22 +43,22 @@ export const metadata: Metadata = {
     type: "website",
     locale: "en_US",
     url: "/",
-    title: "FreightIQ - AI Voice Agent Platform",
-    description: "Uncover the Untapped Potential of Your Growth to Connect with Clients",
+    title: "FreightIQ - Rate Confirmation Operations",
+    description: "Extract, validate, review, and hand off carrier rate confirmations.",
     siteName: "FreightIQ",
     images: [
       {
         url: "/freightiq-logo.png",
         width: 1024,
         height: 1024,
-        alt: "FreightIQ - AI Voice Agent Platform",
+        alt: "FreightIQ - Freight Broker Operations",
       },
     ],
   },
   twitter: {
     card: "summary",
-    title: "FreightIQ - AI Voice Agent Platform",
-    description: "Uncover the Untapped Potential of Your Growth to Connect with Clients",
+    title: "FreightIQ - Rate Confirmation Operations",
+    description: "Extract, validate, review, and hand off carrier rate confirmations.",
     images: ["/freightiq-logo.png"],
     creator: "@freightiq",
   },

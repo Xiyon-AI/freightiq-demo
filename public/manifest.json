@@ -1,7 +1,7 @@
 {
-  "name": "FreightIQ - AI Voice Agent Platform",
+  "name": "FreightIQ - Rate Confirmation Operations",
   "short_name": "FreightIQ",
-  "description": "AI-powered voice agent platform for modern businesses",
+  "description": "Rate confirmation extraction, validation, and broker review for logistics teams",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

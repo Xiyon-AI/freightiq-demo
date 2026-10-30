@@ -5,8 +5,7 @@ import { useRouter } from 'next/navigation'
 import { 
   FileText, 
   Settings, 
-  HelpCircle, 
-  LayoutDashboard,
+  Home,
   Activity,
   Search
 } from 'lucide-react'
@@ -51,10 +50,10 @@ export function CommandPalette() {
           
           <CommandGroup heading="Navigation">
             <CommandItem
-              onSelect={() => runCommand(() => router.push('/'))}
+              onSelect={() => runCommand(() => router.push('/operations'))}
             >
-              <LayoutDashboard className="mr-2 h-4 w-4" />
-              <span>Dashboard</span>
+              <Home className="mr-2 h-4 w-4" />
+              <span>Home</span>
             </CommandItem>
             <CommandItem
               onSelect={() => runCommand(() => router.push('/operations'))}
@@ -66,7 +65,7 @@ export function CommandPalette() {
               onSelect={() => runCommand(() => router.push('/documents'))}
             >
               <FileText className="mr-2 h-4 w-4" />
-              <span>Document</span>
+              <span>Documents</span>
             </CommandItem>
           </CommandGroup>
 
@@ -78,12 +77,6 @@ export function CommandPalette() {
             >
               <Settings className="mr-2 h-4 w-4" />
               <span>Settings</span>
-            </CommandItem>
-            <CommandItem
-              onSelect={() => runCommand(() => router.push('/help'))}
-            >
-              <HelpCircle className="mr-2 h-4 w-4" />
-              <span>Help & Support</span>
             </CommandItem>
           </CommandGroup>
 

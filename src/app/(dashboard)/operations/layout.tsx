@@ -1,8 +1,8 @@
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: "Operations",
-  description: "Monitor live operations, system health, and real-time events for your voice agents",
+  title: "Broker Operations",
+  description: "Monitor rate confirmation intake, review exceptions, and mock TMS handoffs",
   robots: {
     index: false,
     follow: false,

@@ -4,32 +4,25 @@ import Link from 'next/link'
 import { Logo } from '@/components/shared/Logo'
 import { usePathname } from 'next/navigation'
 import { useTheme } from 'next-themes'
-import { ChevronRight, HelpCircle, Settings, LogOut, Monitor, Moon, Sun, Check } from 'lucide-react'
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
+import { ChevronRight, HelpCircle, Monitor, Moon, Sun, Check, FlaskConical } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { MobileNav } from './MobileNav'
 import { useLanguage, type Locale } from '@/lib/i18n/LanguageContext'
-import { useActiveOrg } from '@/components/providers/OrgProvider'
 
 export function TopBar() {
   const pathname = usePathname()
   const { locale, setLocale, t } = useLanguage()
   const { theme, setTheme } = useTheme()
-  const { isPlatformAdmin } = useActiveOrg()
-  const userEmail = 'alex.morgan@example.com'
 
   const handleThemeChange = (newTheme: 'system' | 'dark' | 'light') => {
     setTheme(newTheme)
   }
 
-  const handleLogout = () => {}
 
   const getBreadcrumbs = () => {
     const segments = pathname?.split('/').filter(Boolean) || []
@@ -50,7 +43,7 @@ export function TopBar() {
   return (
     <header className="fixed top-0 left-0 right-0 h-16 bg-background border-b border-border z-30">
       <div className="h-full px-4 md:px-6 flex items-center justify-between">
-        {/* Left Section: Logo + Breadcrumbs + Agent Selector */}
+        {/* Left Section: Logo + Page Breadcrumb */}
         <div className="flex items-center gap-2 md:gap-4">
           <MobileNav />
           {/* Logo */}
@@ -69,7 +62,7 @@ export function TopBar() {
           )}
         </div>
 
-        {/* Right Section: Navigation Links + Language Toggle + User Avatar */}
+        {/* Right Section: Demo guide + language + theme */}
         <div className="flex items-center gap-3 md:gap-6">
           {/* Navigation Links */}
           <Link
@@ -79,15 +72,6 @@ export function TopBar() {
             <HelpCircle className="w-4 h-4" />
             <span>{t('topbar.getHelp')}</span>
           </Link>
-
-          {isPlatformAdmin && (
-            <a
-              href="/admin"
-              className="hidden md:flex items-center text-sm font-medium text-neutral-600 hover:text-foreground transition-colors"
-            >
-              Admin
-            </a>
-          )}
 
           {/* Language Toggle */}
           <div className="flex items-center gap-1 bg-neutral-100/80 rounded-lg p-0.5 border border-border/50">
@@ -106,33 +90,13 @@ export function TopBar() {
             ))}
           </div>
 
-          {/* User Avatar */}
+          <span className="hidden items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground sm:flex"><FlaskConical className="h-3 w-3 text-primary"/>Demo</span>
           <DropdownMenu>
-            <DropdownMenuTrigger className="outline-none">
-              <Avatar className="w-8 h-8 cursor-pointer ring-2 ring-transparent hover:ring-primary-light transition-all">
-                <AvatarImage src="https://api.dicebear.com/9.x/notionists/svg?seed=Felix" />
-                <AvatarFallback className="bg-primary text-white text-xs font-semibold">
-                  AU
-                </AvatarFallback>
-              </Avatar>
+            <DropdownMenuTrigger className="flex h-8 w-8 items-center justify-center rounded-full border border-border text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground">
+              {theme === 'dark' ? <Moon className="h-4 w-4"/> : <Sun className="h-4 w-4"/>}
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuLabel className="font-normal">
-                <div className="flex flex-col space-y-1">
-                  <p className="text-xs text-muted-foreground">{userEmail}</p>
-                </div>
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link href="/settings" className="flex items-center gap-2">
-                  <Settings className="w-4 h-4" />
-                  <span>{t('topbar.settings')}</span>
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuLabel className="text-xs text-muted-foreground font-normal px-2 py-1.5">
-                {t('topbar.theme')}
-              </DropdownMenuLabel>
+              <DropdownMenuItem disabled className="text-xs text-muted-foreground">{t('topbar.theme')}</DropdownMenuItem>
               <DropdownMenuItem onClick={() => handleThemeChange('system')} className="flex items-center justify-between cursor-pointer">
                 <div className="flex items-center gap-2">
                   <Monitor className="w-4 h-4" />
@@ -153,14 +117,6 @@ export function TopBar() {
                   <span>{t('topbar.themeLight')}</span>
                 </div>
                 {theme === 'light' && <Check className="w-4 h-4 text-accent" />}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={handleLogout}
-                className="text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer"
-              >
-                <LogOut className="w-4 h-4" />
-                <span>{t('topbar.logout')}</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

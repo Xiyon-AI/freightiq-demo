@@ -15,12 +15,13 @@ import {
   UploadCloud,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import Link from "next/link";
 
 const intakeItems = [
-  { name: "Northstar Logistics — Invoice 10482.pdf", type: "Invoice", source: "Email inbox", date: "Today, 10:42 AM", status: "Ready to review", tone: "green", initials: "NL" },
-  { name: "Harbor Freight — Bill of Lading.pdf", type: "Bill of lading", source: "Manual upload", date: "Today, 10:18 AM", status: "Processing", tone: "blue", initials: "HF" },
-  { name: "Summit Transport — Rate confirmation.pdf", type: "Rate confirmation", source: "Email inbox", date: "Today, 9:56 AM", status: "Needs attention", tone: "amber", initials: "ST" },
-  { name: "Blue Ridge Cargo — Invoice 7781.pdf", type: "Invoice", source: "EDI import", date: "Yesterday, 4:32 PM", status: "Ready to review", tone: "green", initials: "BR" },
+  { name: "Northstar Logistics — RC-10482.pdf", type: "Rate confirmation", source: "Sample picker", date: "Today, 10:42 AM", status: "Ready to review", tone: "green", initials: "NL" },
+  { name: "Harbor Freight — RC-8831.pdf", type: "Rate confirmation", source: "PDF upload", date: "Today, 10:18 AM", status: "Processing", tone: "blue", initials: "HF" },
+  { name: "Summit Transport — RC-33019.pdf", type: "Rate confirmation", source: "PDF upload", date: "Today, 9:56 AM", status: "Needs attention", tone: "amber", initials: "ST" },
+  { name: "Blue Ridge Cargo — RC-7781.pdf", type: "Rate confirmation", source: "Sample picker", date: "Yesterday, 4:32 PM", status: "Ready to review", tone: "green", initials: "BR" },
 ];
 
 const statusStyles: Record<string, string> = {
@@ -45,32 +46,32 @@ export default function IntakePage() {
         <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
           <div>
             <div className="mb-2 flex items-center gap-2 text-xs font-medium text-muted-foreground"><Inbox className="h-4 w-4" /> Document operations</div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">Intake</h1>
-            <p className="mt-1 text-sm text-muted-foreground">Bring shipping documents into FreightIQ and track them through processing.</p>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">Rate confirmation intake</h1>
+            <p className="mt-1 text-sm text-muted-foreground">Bring carrier rate confirmation PDFs into FreightIQ and track them through review.</p>
           </div>
-          <Button><Plus className="mr-1.5 h-4 w-4" /> New intake</Button>
+          <Button asChild><Link href="/documents"><Plus className="mr-1.5 h-4 w-4" /> New intake</Link></Button>
         </div>
 
         <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4" aria-label="Intake overview">
           <Metric icon={<Inbox className="h-4 w-4" />} label="Received today" value="28" detail="↑ 12% from yesterday" tint="text-primary" />
           <Metric icon={<Clock3 className="h-4 w-4" />} label="In processing" value="6" detail="Usually takes under 2 min" tint="text-sky-600" />
-          <Metric icon={<FileCheck2 className="h-4 w-4" />} label="Ready to review" value="14" detail="Across 3 document types" tint="text-emerald-600" />
+          <Metric icon={<FileCheck2 className="h-4 w-4" />} label="Ready to review" value="14" detail="Rate confirmation PDFs" tint="text-emerald-600" />
           <Metric icon={<CheckCircle2 className="h-4 w-4" />} label="Processed this week" value="142" detail="96.4% straight-through" tint="text-violet-600" />
         </section>
 
         <section className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-7">
           <div className="mx-auto flex max-w-2xl flex-col items-center text-center">
             <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary"><UploadCloud className="h-6 w-6" /></div>
-            <h2 className="text-base font-semibold">Add documents to your intake queue</h2>
-            <p className="mt-1.5 text-sm text-muted-foreground">Upload freight documents or bring them in from a connected source.</p>
-            <div className="mt-5 flex flex-wrap justify-center gap-2"><Button><UploadCloud className="mr-1.5 h-4 w-4" /> Upload files</Button><Button variant="outline"><ArrowDownToLine className="mr-1.5 h-4 w-4" /> Connect an inbox</Button></div>
-            <p className="mt-4 text-xs text-muted-foreground">PDF, PNG, JPG, TIFF, DOCX · Up to 50 MB per file</p>
+            <h2 className="text-base font-semibold">Add a rate confirmation</h2>
+            <p className="mt-1.5 text-sm text-muted-foreground">Upload a carrier PDF or try the built-in sample document.</p>
+            <div className="mt-5 flex flex-wrap justify-center gap-2"><Button asChild><Link href="/documents"><UploadCloud className="mr-1.5 h-4 w-4" /> Upload or choose sample</Link></Button><Button variant="outline" asChild><Link href="/guides"><ArrowDownToLine className="mr-1.5 h-4 w-4" /> View demo workflow</Link></Button></div>
+            <p className="mt-4 text-xs text-muted-foreground">Rate confirmation PDF · Up to 50 MB per file</p>
           </div>
         </section>
 
         <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
           <div className="flex flex-col gap-3 border-b border-border p-5 sm:flex-row sm:items-center sm:justify-between">
-            <div><h2 className="text-base font-semibold">Recent intake</h2><p className="mt-1 text-xs text-muted-foreground">Documents received across your connected sources</p></div>
+            <div><h2 className="text-base font-semibold">Recent rate confirmations</h2><p className="mt-1 text-xs text-muted-foreground">Rate confirmation files in the broker review queue</p></div>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
               <label className="relative block sm:w-64"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"/><input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search documents..." aria-label="Search intake documents" className="h-9 w-full rounded-lg border border-border bg-background pl-9 pr-3 text-sm outline-none transition focus:border-primary/50 focus:ring-2 focus:ring-primary/15"/></label>
               <Button variant="outline" size="sm"><Filter className="mr-1.5 h-3.5 w-3.5" /> Filters</Button><Button variant="ghost" size="sm" className="text-primary">View all <ArrowRight className="ml-1.5 h-3.5 w-3.5" /></Button>

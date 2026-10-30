@@ -1,27 +1,13 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { useActiveOrg } from "@/components/providers/OrgProvider";
-import { useDocumentProcessing } from "@/hooks/use-document-processing";
+import { FileCheck2, FileText } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { PdfUploadZone } from "./pdf-upload-zone";
-import { ProcessingTracker } from "./processing-tracker";
-import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { DocumentReview, type ReviewDocument } from "./document-review";
 
-const MAX_CONCURRENT_UPLOADS = 3;
-
 export function DocumentsShell() {
-  const { activeOrg, loading: orgLoading } = useActiveOrg();
-  const orgId = activeOrg?.id ?? null;
-  const { t } = useLanguage();
-
-  const { trackedDocs } = useDocumentProcessing(orgId);
-  
   const [reviewingDocument, setReviewingDocument] = useState<ReviewDocument | null>(null);
-
-  const activeUploads = trackedDocs.filter(
-    (d) => !["indexed", "error", "deleted"].includes(d.status)
-  ).length;
 
   const handleUploadComplete = useCallback(
     (docId: string, filename: string, file: File) => {
@@ -30,15 +16,9 @@ export function DocumentsShell() {
     []
   );
 
-  const handleCancel = useCallback(async (_docId: string) => {}, []);
-
-  if (!orgLoading && !orgId) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <p className="text-gray-500 text-sm">{t('knowledge.noOrg')}</p>
-      </div>
-    );
-  }
+  const openSample = useCallback(() => {
+    setReviewingDocument({ id: "sample-rate-confirmation", filename: "Sample_Rate_Confirmation_RC-10482.pdf", sample: true });
+  }, []);
 
   return (
     <>
@@ -48,9 +28,7 @@ export function DocumentsShell() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
             <div className="flex items-center gap-3">
               <div className="px-4 py-2 bg-muted/30/80 border border-border/60 rounded-xl">
-                <p className="text-sm font-bold text-neutral-700">
-                  {t('knowledge.subtitle')}
-                </p>
+                <p className="text-sm font-bold text-neutral-700">Carrier rate confirmation intake</p>
               </div>
             </div>
           </div>
@@ -59,22 +37,19 @@ export function DocumentsShell() {
           <div className="space-y-8">
           {/* Upload zone */}
           <PdfUploadZone
-            orgId={orgId ?? ""}
-            disabled={orgLoading || activeUploads >= MAX_CONCURRENT_UPLOADS}
             onUploadComplete={handleUploadComplete}
           />
 
-          {/* Processing tracker */}
-          <ProcessingTracker
-            trackedDocs={trackedDocs}
-            onCancel={handleCancel}
-          />
+          <div className="flex flex-col justify-between gap-3 rounded-xl border border-primary/15 bg-primary/5 p-4 sm:flex-row sm:items-center">
+            <div className="flex items-start gap-3"><div className="mt-0.5 text-primary"><FileCheck2 className="h-4 w-4" /></div><div><p className="text-sm font-semibold text-foreground">Try the sample rate confirmation</p><p className="mt-1 text-xs text-muted-foreground">Preview the extraction, validation, CSV export, and mock TMS handoff using demo data.</p></div></div>
+            <Button variant="outline" onClick={openSample}><FileText className="mr-2 h-4 w-4" />Open sample</Button>
+          </div>
 
         </div>
       </div>
       </div>
 
-      {reviewingDocument && <DocumentReview document={reviewingDocument} onClose={() => {
+      {reviewingDocument && <DocumentReview key={reviewingDocument.id} document={reviewingDocument} onClose={() => {
         if (reviewingDocument.url?.startsWith("blob:")) URL.revokeObjectURL(reviewingDocument.url);
         setReviewingDocument(null);
       }} />}

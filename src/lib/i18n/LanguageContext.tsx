@@ -20,7 +20,7 @@ const LanguageContext = createContext<LanguageContextValue>({
   t: (key: string) => key,
 })
 
-const STORAGE_KEY = 'vocale-locale'
+const STORAGE_KEY = 'freightiq-locale'
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
   const [locale, setLocaleState] = useState<Locale>('en')

@@ -1,8 +1,8 @@
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: "Guide for the User",
-  description: "Official guides for using FreightIQ AI Voice Agent",
+  title: "Demo Guide",
+  description: "How to process rate confirmations in the FreightIQ broker demo",
   robots: {
     index: false,
     follow: false,
