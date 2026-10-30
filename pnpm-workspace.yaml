@@ -1,5 +1,4 @@
 allowBuilds:
-  '@google/genai': false
   esbuild: true
   msw: true
   protobufjs: false

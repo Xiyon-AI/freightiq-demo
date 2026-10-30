@@ -97,10 +97,10 @@ async function listPdfs(directory: string): Promise<string[]> {
 }
 
 async function main() {
-  const apiKey = process.env.GEMINI_API_KEY
-  const model = process.env.GEMINI_MODEL || 'gemini-3.8-flash'
+  const apiKey = process.env.OPENROUTER_API_KEY
+  const model = process.env.OPENROUTER_MODEL || 'nvidia/nemotron-3.5-super-vl:free'
   if (!apiKey) {
-    throw new Error('Set GEMINI_API_KEY before running the evaluation. GEMINI_MODEL defaults to gemini-3.8-flash.')
+    throw new Error('Set OPENROUTER_API_KEY before running the evaluation. OPENROUTER_MODEL defaults to nvidia/nemotron-3.5-super-vl:free.')
   }
 
   const pdfs = await listPdfs(pdfDirectory)
@@ -117,8 +117,7 @@ async function main() {
   let flaggedDocumentCount = 0
   let wrongFieldCount = 0
   let silentErrorCount = 0
-  let totalInputTokens = 0
-  let totalOutputTokens = 0
+  let totalPagesProcessed = 0
 
   for (const pdfPath of pdfs) {
     const sampleName = path.basename(pdfPath, path.extname(pdfPath))
@@ -136,9 +135,9 @@ async function main() {
       data: new Uint8Array(await readFile(pdfPath)),
       mediaType: 'application/pdf',
       model,
+      filename: path.basename(pdfPath),
     })
-    totalInputTokens += extracted.usage.input_tokens
-    totalOutputTokens += extracted.usage.output_tokens
+    totalPagesProcessed += extracted.usage.pages_processed
     const issues = validate(extracted.fields, seenLoadNumbers)
     const comparisons = compareFields(expected, extracted.fields, issues)
     const isDocumentCorrect = comparisons.every((comparison) => comparison.correct)
@@ -196,10 +195,7 @@ async function main() {
       silent_error_rate: wrongFieldCount === 0 ? null : silentErrorCount / wrongFieldCount,
       silent_errors: silentErrorCount,
       wrong_fields: wrongFieldCount,
-      usage: {
-        input_tokens: totalInputTokens,
-        output_tokens: totalOutputTokens,
-      },
+      usage: { pages_processed: totalPagesProcessed },
     },
     samples: sampleResults,
   }

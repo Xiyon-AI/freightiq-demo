@@ -48,9 +48,9 @@ export async function POST(req: Request) {
     return Response.json({ error: 'Upload a PDF, JPEG, PNG, GIF, or WebP file' }, { status: 415 })
   }
 
-  const model = process.env.GEMINI_MODEL || 'gemini-3.8-flash'
-  if (!process.env.GEMINI_API_KEY) {
-    return Response.json({ error: 'Gemini document extraction is not configured' }, { status: 503 })
+  const model = process.env.OPENROUTER_MODEL || 'nvidia/nemotron-3.5-super-vl:free'
+  if (!process.env.OPENROUTER_API_KEY) {
+    return Response.json({ error: 'OpenRouter extraction is not configured. Set OPENROUTER_API_KEY.' }, { status: 503 })
   }
 
   try {
@@ -58,6 +58,7 @@ export async function POST(req: Request) {
       data: new Uint8Array(await file.arrayBuffer()),
       mediaType: isPdf ? 'application/pdf' : file.type as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp',
       model,
+      filename: file.name,
     })
 
     return Response.json({
@@ -73,7 +74,7 @@ export async function POST(req: Request) {
       return Response.json({ error: 'Schema mismatch', details: error.issues }, { status: 502 })
     }
     console.error('Document extraction request failed', error)
-    const developmentMessage = error instanceof Error ? error.message : 'Unknown Gemini API error'
+    const developmentMessage = error instanceof Error ? error.message : 'Unknown OpenRouter API error'
     return Response.json({
       error: process.env.NODE_ENV === 'development' ? developmentMessage : 'Document extraction failed',
     }, { status: 502 })

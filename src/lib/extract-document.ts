@@ -1,10 +1,10 @@
-import { GoogleGenAI } from '@google/genai'
 import { LoadDocument, loadDocumentJsonSchema, type LoadDocumentT } from './schema'
 import { SYSTEM_PROMPT } from './prompt'
 
 export type ExtractionUsage = {
-  input_tokens: number
-  output_tokens: number
+  pages_processed: number
+  prompt_tokens?: number
+  completion_tokens?: number
 }
 
 export type ExtractedFreightDocument = {
@@ -20,7 +20,18 @@ export class ExtractionSchemaMismatchError extends Error {
   }
 }
 
-function getGeminiResponseSchema() {
+type OpenRouterResponse = {
+  choices?: Array<{
+    message?: {
+      tool_calls?: Array<{ function?: { name?: string; arguments?: string } }>
+      content?: string | null
+    }
+  }>
+  usage?: { prompt_tokens?: number; completion_tokens?: number }
+  error?: { message?: string }
+}
+
+function getResponseSchema() {
   const schema = structuredClone(loadDocumentJsonSchema) as Record<string, unknown>
   delete schema.$schema
   return schema
@@ -30,43 +41,74 @@ export async function extractFreightDocument({
   data,
   mediaType,
   model,
+  filename = 'freight-document',
 }: {
   data: Uint8Array
   mediaType: 'application/pdf' | 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp'
   model: string
+  filename?: string
 }): Promise<ExtractedFreightDocument> {
-  const apiKey = process.env.GEMINI_API_KEY
-  if (!apiKey) throw new Error('GEMINI_API_KEY is not configured.')
+  const apiKey = process.env.OPENROUTER_API_KEY
+  if (!apiKey) throw new Error('OPENROUTER_API_KEY is not configured.')
 
-  const ai = new GoogleGenAI({ apiKey })
-  const response = await ai.models.generateContent({
-    model,
-    contents: [{
-      role: 'user',
-      parts: [
-        { inlineData: { data: Buffer.from(data).toString('base64'), mimeType: mediaType } },
-        { text: 'Extract this freight document.' },
-      ],
-    }],
-    config: {
-      systemInstruction: SYSTEM_PROMPT,
-      responseMimeType: 'application/json',
-      responseJsonSchema: getGeminiResponseSchema(),
-      maxOutputTokens: 2000,
-      temperature: 0,
+  const base64 = Buffer.from(data).toString('base64')
+  const content = mediaType === 'application/pdf'
+    ? [
+        { type: 'file', file: { filename, file_data: `data:application/pdf;base64,${base64}` } },
+        { type: 'text', text: 'Extract this freight document.' },
+      ]
+    : [
+        { type: 'image_url', image_url: { url: `data:${mediaType};base64,${base64}` } },
+        { type: 'text', text: 'Extract this freight document.' },
+      ]
+
+  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+      'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+      'X-Title': 'FreightIQ',
     },
+    body: JSON.stringify({
+      model,
+      temperature: 0,
+      max_tokens: 4000,
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'user', content },
+      ],
+      tools: [{
+        type: 'function',
+        function: {
+          name: 'record_document',
+          description: 'Record the data extracted from a US freight document.',
+          parameters: getResponseSchema(),
+          strict: true,
+        },
+      }],
+      tool_choice: { type: 'function', function: { name: 'record_document' } },
+    }),
   })
 
-  const responseText = response.text
-  if (!responseText) {
-    throw new ExtractionResultMissingError('Gemini returned no structured result.')
+  const result = await response.json().catch(() => null) as OpenRouterResponse | null
+  if (!response.ok) {
+    throw new Error(result?.error?.message || `OpenRouter request failed (${response.status}).`)
+  }
+
+  const toolCall = result?.choices?.[0]?.message?.tool_calls?.find(
+    (call) => call.function?.name === 'record_document',
+  )
+  const rawOutput = toolCall?.function?.arguments
+  if (!rawOutput) {
+    throw new ExtractionResultMissingError('OpenRouter returned no structured extraction.')
   }
 
   let output: unknown
   try {
-    output = JSON.parse(responseText)
+    output = JSON.parse(rawOutput)
   } catch {
-    throw new ExtractionSchemaMismatchError([{ message: 'Gemini returned invalid JSON.' }])
+    throw new ExtractionSchemaMismatchError([{ message: 'OpenRouter returned invalid JSON.' }])
   }
 
   const parsed = LoadDocument.safeParse(output)
@@ -77,8 +119,9 @@ export async function extractFreightDocument({
   return {
     fields: parsed.data,
     usage: {
-      input_tokens: response.usageMetadata?.promptTokenCount ?? 0,
-      output_tokens: response.usageMetadata?.candidatesTokenCount ?? 0,
+      pages_processed: mediaType === 'application/pdf' ? 1 : 0,
+      prompt_tokens: result?.usage?.prompt_tokens,
+      completion_tokens: result?.usage?.completion_tokens,
     },
   }
 }

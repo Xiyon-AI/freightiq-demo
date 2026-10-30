@@ -43,6 +43,32 @@ const SAMPLE_FIELDS = {
 } satisfies LoadDocumentT;
 
 type ExtractionState = "idle" | "loading" | "success" | "error";
+type ExtractionResponse = { fields: LoadDocumentT; issues?: ValidationIssue[]; error?: string };
+
+const extractionRequests = new WeakMap<File, Promise<ExtractionResponse>>();
+
+function extractFileOnce(file: File): Promise<ExtractionResponse> {
+  const existingRequest = extractionRequests.get(file);
+  if (existingRequest) return existingRequest;
+
+  const request = (async () => {
+    const seen = JSON.parse(sessionStorage.getItem("freightiq-seen-load-numbers") || "[]") as string[];
+    const form = new FormData();
+    form.append("file", file);
+    form.append("seen_load_numbers", JSON.stringify(seen));
+    const response = await fetch("/api/extract", { method: "POST", body: form });
+    const result = await response.json() as ExtractionResponse;
+    if (!response.ok) throw new Error(result.error || "Document extraction failed.");
+    const loadNumber = result.fields?.load_number;
+    if (typeof loadNumber === "string" && loadNumber.trim()) {
+      sessionStorage.setItem("freightiq-seen-load-numbers", JSON.stringify([...new Set([...seen, loadNumber])]));
+    }
+    return result;
+  })();
+
+  extractionRequests.set(file, request);
+  return request;
+}
 
 export function DocumentReview({ document, onClose }: { document: ReviewDocument; onClose: () => void }) {
   const [notes, setNotes] = useState("");
@@ -62,21 +88,11 @@ export function DocumentReview({ document, onClose }: { document: ReviewDocument
       setExtractState("loading");
       setExtractError("");
       try {
-        const seen = JSON.parse(sessionStorage.getItem("freightiq-seen-load-numbers") || "[]") as string[];
-        const form = new FormData();
-        form.append("file", document.file as File);
-        form.append("seen_load_numbers", JSON.stringify(seen));
-        const response = await fetch("/api/extract", { method: "POST", body: form });
-        const result = await response.json();
-        if (!response.ok) throw new Error(result.error || "Document extraction failed.");
+        const result = await extractFileOnce(document.file as File);
         if (!active) return;
         setFields(result.fields as LoadDocumentT);
         setIssues(Array.isArray(result.issues) ? result.issues as ValidationIssue[] : []);
         setExtractState("success");
-        const loadNumber = result.fields?.load_number;
-        if (typeof loadNumber === "string" && loadNumber.trim()) {
-          sessionStorage.setItem("freightiq-seen-load-numbers", JSON.stringify([...new Set([...seen, loadNumber])]));
-        }
       } catch (error) {
         if (!active) return;
         setExtractError(error instanceof Error ? error.message : "Document extraction failed.");
@@ -127,8 +143,8 @@ export function DocumentReview({ document, onClose }: { document: ReviewDocument
 
         <section className="grid min-h-0 gap-4 xl:grid-cols-[minmax(0,1fr)_230px]">
           <div className="min-h-[350px] overflow-auto rounded-xl border border-border bg-card p-4">
-            <div className="mb-4 flex items-center justify-between gap-3"><div><h2 className="text-sm font-semibold">Structured rate data</h2><p className="mt-1 text-xs text-muted-foreground">{extractState === "loading" ? "Gemini is extracting document fields…" : fields ? "Review extracted values and validation flags" : "Extracted fields will appear here"}</p></div>{fields && <Button variant="outline" size="sm" onClick={() => setShowJson((value) => !value)}><Code2 className="mr-1.5 h-3.5 w-3.5"/>{showJson ? "Fields" : "JSON"}</Button>}</div>
-            {extractState === "loading" && !fields ? <div className="flex min-h-52 flex-col items-center justify-center text-sm text-muted-foreground"><LoaderCircle className="mb-3 h-6 w-6 animate-spin text-primary"/>Extracting document data…</div> : extractState === "error" ? <div className="rounded-lg border border-rose-200 bg-rose-50 p-4"><p className="text-sm font-semibold text-rose-800">Extraction failed</p><p className="mt-1 text-xs text-rose-700">{extractError}</p><p className="mt-2 text-xs text-rose-700">Check that GEMINI_API_KEY is set and the PDF is no larger than 4 MB.</p></div> : fields ? showJson ? <pre className="overflow-auto rounded-lg bg-muted/40 p-4 text-xs leading-relaxed">{JSON.stringify(fields, null, 2)}</pre> : <div className="grid gap-2 sm:grid-cols-2">{(Object.entries(fields) as [keyof LoadDocumentT, LoadDocumentT[keyof LoadDocumentT]][]).map(([key, value]) => renderField(key, value))}</div> : <div className="flex min-h-52 flex-col items-center justify-center rounded-lg border border-dashed border-border px-6 text-center"><FileText className="mb-3 h-8 w-8 text-muted-foreground/60"/><p className="text-sm font-medium">No extracted data</p><p className="mt-1 max-w-xs text-xs text-muted-foreground">Upload a supported PDF to extract structured freight fields.</p></div>}
+            <div className="mb-4 flex items-center justify-between gap-3"><div><h2 className="text-sm font-semibold">Structured rate data</h2><p className="mt-1 text-xs text-muted-foreground">{extractState === "loading" ? "OpenRouter is extracting document fields…" : fields ? "Review extracted values and validation flags" : "Extracted fields will appear here"}</p></div>{fields && <Button variant="outline" size="sm" onClick={() => setShowJson((value) => !value)}><Code2 className="mr-1.5 h-3.5 w-3.5"/>{showJson ? "Fields" : "JSON"}</Button>}</div>
+            {extractState === "loading" && !fields ? <div className="flex min-h-52 flex-col items-center justify-center text-sm text-muted-foreground"><LoaderCircle className="mb-3 h-6 w-6 animate-spin text-primary"/>Extracting document data…</div> : extractState === "error" ? <div className="rounded-lg border border-rose-200 bg-rose-50 p-4"><p className="text-sm font-semibold text-rose-800">Extraction failed</p><p className="mt-1 text-xs text-rose-700">{extractError}</p><p className="mt-2 text-xs text-rose-700">Check OPENROUTER_API_KEY, model availability, and your free usage limits. PDFs are limited to 4 MB in this demo.</p></div> : fields ? showJson ? <pre className="overflow-auto rounded-lg bg-muted/40 p-4 text-xs leading-relaxed">{JSON.stringify(fields, null, 2)}</pre> : <div className="grid gap-2 sm:grid-cols-2">{(Object.entries(fields) as [keyof LoadDocumentT, LoadDocumentT[keyof LoadDocumentT]][]).map(([key, value]) => renderField(key, value))}</div> : <div className="flex min-h-52 flex-col items-center justify-center rounded-lg border border-dashed border-border px-6 text-center"><FileText className="mb-3 h-8 w-8 text-muted-foreground/60"/><p className="text-sm font-medium">No extracted data</p><p className="mt-1 max-w-xs text-xs text-muted-foreground">Upload a supported PDF to extract structured freight fields.</p></div>}
           </div>
           <div className="rounded-xl border border-border bg-card p-4"><h2 className="text-sm font-semibold">Validation</h2>{extractState === "loading" ? <div className="mt-4 rounded-lg bg-muted/40 p-3 text-xs text-muted-foreground">Validation will run after extraction.</div> : extractState === "error" ? <div className="mt-4 flex items-start gap-3 rounded-lg bg-rose-50 p-3"><CircleAlert className="mt-0.5 h-4 w-4 shrink-0 text-rose-600"/><div><p className="text-xs font-medium text-rose-800">Extraction unavailable</p><p className="mt-1 text-xs text-rose-700">{extractError}</p></div></div> : fields ? <><div className="mt-4 flex items-start gap-3 rounded-lg bg-emerald-50 p-3"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600"/><div><p className="text-xs font-semibold text-emerald-800">{issues.filter((issue) => issue.severity === "error").length} errors · {issues.filter((issue) => issue.severity === "warning").length} warnings</p><p className="mt-1 text-xs leading-relaxed text-emerald-700">{issues.length ? "Review the flagged fields before approval." : "No validation issues found."}</p></div></div><div className="mt-4 max-h-[35vh] space-y-2 overflow-auto">{issues.length ? issues.map((issue, index) => <div key={`${issue.field}-${index}`} className="rounded-md border border-border p-2"><p className="text-[11px] font-semibold capitalize">{issue.severity} · {issue.field.replaceAll("_", " ")}</p><p className="mt-1 text-[11px] text-muted-foreground">{issue.message}</p></div>) : <p className="flex items-center gap-2 text-xs text-muted-foreground"><Check className="h-3.5 w-3.5 text-emerald-600"/>All checks passed</p>}</div></> : <div className="mt-4 flex items-start gap-3 rounded-lg bg-muted/40 p-3"><CircleAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-600"/><div><p className="text-xs font-medium">Awaiting extraction</p><p className="mt-1 text-xs leading-relaxed text-muted-foreground">Validation results will appear here when extraction is available.</p></div></div>}<div className="mt-5 border-t border-border pt-4"><h3 className="text-xs font-semibold">TMS handoff</h3><p className="mt-2 flex items-center gap-2 text-xs text-muted-foreground"><Truck className="h-4 w-4 text-primary"/>Mock TMS · Demo mode</p></div></div>
         </section>
