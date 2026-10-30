@@ -7,7 +7,6 @@ import {
   AudioLines,
   BookOpen,
   SlidersHorizontal,
-  Ticket,
   Activity,
   Users,
   UploadCloud,
@@ -17,7 +16,6 @@ import {
   Cpu,
   Settings2,
   Mic,
-  Mail,
   ArrowRight,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -32,7 +30,6 @@ type SectionMeta = {
 const SECTIONS: SectionMeta[] = [
   { id: 'knowledge-base', icon: BookOpen, titleKey: 'guides.kb.title' },
   { id: 'configuration', icon: SlidersHorizontal, titleKey: 'guides.config.title' },
-  { id: 'tickets', icon: Ticket, titleKey: 'guides.tickets.title' },
   { id: 'operations', icon: Activity, titleKey: 'guides.operations.title' },
   { id: 'account', icon: Users, titleKey: 'guides.account.title' },
 ]
@@ -374,41 +371,8 @@ export default function GuidesPage() {
             </div>
           </Section>
 
-          {/* 3 — Tickets */}
+          {/* 3 — Operations */}
           <Section meta={SECTIONS[2]!} index={2}>
-            <div className="space-y-3">
-              <SubHeading>{t('guides.tickets.objective.title')}</SubHeading>
-              <Lead>{t('guides.tickets.objective.desc')}</Lead>
-            </div>
-
-            <div className="space-y-3">
-              <SubHeading>{t('guides.tickets.ui.title')}</SubHeading>
-              <Lead>{t('guides.tickets.ui.desc')}</Lead>
-            </div>
-
-            <Callout icon={Mail} title={t('guides.tickets.automation.title')}>
-              <p className="mb-3">{t('guides.tickets.automation.desc')}</p>
-              <ul className="space-y-2.5">
-                <DefItem text={t('guides.tickets.automation.enable')} />
-                <DefItem text={t('guides.tickets.automation.email')} />
-                <DefItem text={t('guides.tickets.automation.active')} />
-              </ul>
-            </Callout>
-
-            <div className="space-y-3">
-              <SubHeading>{t('guides.tickets.detail.title')}</SubHeading>
-              <Lead>{t('guides.tickets.detail.desc')}</Lead>
-              <ul className="space-y-2.5">
-                <DefItem text={t('guides.tickets.detail.notifications')} />
-                <DefItem text={t('guides.tickets.detail.metadata')} />
-                <DefItem text={t('guides.tickets.detail.message')} />
-                <DefItem text={t('guides.tickets.detail.params')} />
-              </ul>
-            </div>
-          </Section>
-
-          {/* 4 — Operations */}
-          <Section meta={SECTIONS[3]!} index={3}>
             <Lead>{t('guides.operations.desc')}</Lead>
             <ul className="space-y-2.5">
               <DefItem text={t('guides.operations.sessions')} />
@@ -417,8 +381,8 @@ export default function GuidesPage() {
             </ul>
           </Section>
 
-          {/* 5 — Account */}
-          <Section meta={SECTIONS[4]!} index={4}>
+          {/* 4 — Account */}
+          <Section meta={SECTIONS[3]!} index={3}>
             <Lead>{t('guides.account.desc')}</Lead>
             <ul className="space-y-2.5">
               <DefItem text={t('guides.account.orgs')} />

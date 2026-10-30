@@ -195,7 +195,7 @@ export function DocumentLibrary({
           <p className="text-sm text-neutral-500">
             {documents.length === 0
               ? t('knowledge.noDocs')
-              : t('tickets.noResults')}
+              : "No documents match your search."}
           </p>
         </div>
       ) : (

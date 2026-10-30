@@ -8,7 +8,6 @@ import {
   HelpCircle, 
   LayoutDashboard,
   Activity,
-  Ticket,
   Search
 } from 'lucide-react'
 import {
@@ -58,12 +57,6 @@ export function CommandPalette() {
               <span>Dashboard</span>
             </CommandItem>
             <CommandItem
-              onSelect={() => runCommand(() => router.push('/tickets'))}
-            >
-              <Ticket className="mr-2 h-4 w-4" />
-              <span>Tickets</span>
-            </CommandItem>
-            <CommandItem
               onSelect={() => runCommand(() => router.push('/operations'))}
             >
               <Activity className="mr-2 h-4 w-4" />
@@ -97,10 +90,6 @@ export function CommandPalette() {
           <CommandSeparator />
 
           <CommandGroup heading="Quick Actions">
-            <CommandItem>
-              <Ticket className="mr-2 h-4 w-4" />
-              <span>Create New Ticket</span>
-            </CommandItem>
             <CommandItem>
               <Search className="mr-2 h-4 w-4" />
               <span>Search Documents</span>

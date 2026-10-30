@@ -576,9 +576,6 @@ export default function LiveOperationsDashboard() {
 
                  {/* Actions */}
                  <div className="pt-6 border-t border-border/60 flex gap-3">
-                   <button className="flex-1 bg-gray-900 text-white px-4 py-2.5 rounded-xl text-[13px] font-semibold hover:bg-gray-800 transition-colors shadow-md hover:shadow-lg flex justify-center items-center gap-2">
-                     <ArrowUpRight className="w-4 h-4" /> {t('operations.createTicket')}
-                   </button>
                    <button className="flex-1 bg-card border border-border/80 text-gray-700 px-4 py-2.5 rounded-xl text-[13px] font-semibold hover:bg-muted/30 transition-colors shadow-sm flex justify-center items-center gap-2">
                      {t('operations.copyJson')}
                    </button>
