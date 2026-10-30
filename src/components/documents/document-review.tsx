@@ -195,13 +195,14 @@ export function DocumentReview({ document, onClose }: { document: ReviewDocument
   const visibleActivity = showAllActivity ? activity : activity.slice(0, 4);
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-background text-foreground">
+    <div className="fixed inset-x-0 bottom-0 top-16 z-50 flex flex-col bg-background text-foreground md:left-64">
       <header className="flex h-16 shrink-0 items-center justify-between border-b border-border bg-card px-5 lg:px-8">
         <div className="flex min-w-0 items-center gap-3"><Button variant="ghost" size="icon" onClick={onClose} aria-label="Back to documents"><ArrowLeft className="h-4 w-4" /></Button><div className="min-w-0"><p className="text-xs text-muted-foreground">Rate confirmations <span className="mx-1">/</span> Review</p><h1 className="truncate text-sm font-semibold">{document.filename}</h1></div></div>
         <span className="hidden items-center gap-2 rounded-full border border-border px-3 py-1.5 text-xs text-muted-foreground sm:flex"><ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />{document.sample ? "Sample extraction" : extractState === "loading" ? "Extracting document" : extractState === "success" ? "Extraction complete" : "PDF received"}</span>
       </header>
 
-      <main className="grid min-h-0 w-full max-w-screen-2xl flex-1 self-center grid-cols-1 gap-4 overflow-auto p-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:p-6">
+      <main className="min-h-0 w-full max-w-screen-2xl flex-1 self-center overflow-auto p-4 lg:p-6">
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">
         <section className="flex min-h-[420px] flex-col overflow-hidden rounded-xl border border-border bg-card">
           <div className="flex items-center justify-between border-b border-border px-4 py-3"><div className="flex items-center gap-2 text-sm font-semibold"><FileText className="h-4 w-4 text-primary" /> Source {isPdf ? "PDF" : "Document"}</div><span className="text-xs text-muted-foreground">{document.sample ? "Sample · 1 page" : "Uploaded file"}</span></div>
           <div className="relative flex flex-1 justify-center overflow-auto bg-muted/40 p-4">
@@ -209,7 +210,7 @@ export function DocumentReview({ document, onClose }: { document: ReviewDocument
           </div>
         </section>
 
-        <section className="grid min-h-0 gap-4 xl:grid-cols-[minmax(0,1fr)_230px]">
+        <section className="grid min-h-0 gap-4 2xl:grid-cols-[minmax(0,1fr)_270px]">
           <div className="min-h-[350px] overflow-auto rounded-xl border border-border bg-card p-4">
             <div className="mb-4 flex items-center justify-between gap-3"><div><div className="flex items-center gap-2"><h2 className="text-sm font-semibold">Structured rate data</h2>{fields && <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">{Object.keys(fields).length} fields</span>}</div><p className="mt-1 text-xs text-muted-foreground">{extractState === "loading" ? "OpenRouter is extracting document fields…" : fields ? "Review extracted values and validation flags" : "Extracted fields will appear here"}</p></div>{fields && <Button variant="outline" size="sm" onClick={() => setShowJson((value) => !value)}><Code2 className="mr-1.5 h-3.5 w-3.5"/>{showJson ? "Fields" : "JSON"}</Button>}</div>
             {extractState === "loading" && !fields ? <div className="flex min-h-52 flex-col items-center justify-center text-sm text-muted-foreground"><LoaderCircle className="mb-3 h-6 w-6 animate-spin text-primary"/>Extracting document data…</div> : extractState === "error" ? <div className="rounded-lg border border-rose-200 bg-rose-50 p-4"><p className="text-sm font-semibold text-rose-800">Extraction failed</p><p className="mt-1 text-xs text-rose-700">{extractError}</p><p className="mt-2 text-xs text-rose-700">Check OPENROUTER_API_KEY, model availability, and your free usage limits. PDFs are limited to 4 MB in this demo.</p></div> : fields ? showJson ? <pre className="overflow-auto rounded-lg bg-muted/40 p-4 text-xs leading-relaxed">{JSON.stringify(fields, null, 2)}</pre> : <div className="space-y-5">
@@ -257,21 +258,22 @@ export function DocumentReview({ document, onClose }: { document: ReviewDocument
             </section>
           </div>
         </section>
-      </main>
-
-      <footer className="shrink-0 border-t border-border bg-card px-4 py-3 lg:px-6">
-        <div className="mx-auto grid max-w-screen-2xl items-center gap-4 lg:grid-cols-[250px_minmax(180px,1fr)_auto]">
-          <div className="flex items-center gap-3 rounded-lg bg-muted/40 px-3 py-2">
-            <div className="relative flex h-16 w-16 shrink-0 items-center justify-center rounded-full p-[4px]" style={{ background: `conic-gradient(var(--primary) ${(averageConfidence ?? 0) * 3.6}deg, var(--border) 0deg)` }}>
-              <div className="flex h-full w-full items-center justify-center rounded-full bg-card text-sm font-bold tabular-nums text-primary">{averageConfidence === null ? "—" : `${averageConfidence}%`}</div>
-            </div>
-            <div className="min-w-0"><p className="text-xs font-semibold">Confidence score</p><p className="mt-1 text-xs font-medium text-primary">{averageConfidence === null ? extractState === "loading" ? "Extracting…" : "Awaiting extraction" : issues.length ? "Review flagged fields" : "Ready for broker review"}</p><p className="mt-0.5 text-[10px] text-muted-foreground">Model estimate · not calibrated</p></div>
-          </div>
-          <label className="min-w-0"><span className="mb-1 block text-xs font-semibold">Review notes</span><Textarea value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Add a broker note (optional)" className="min-h-11 resize-none" /></label>
-          <div className="flex flex-wrap items-end gap-2"><Button variant="outline" onClick={() => { setSentToReview(true); setMessage("Added to the broker review queue."); }}><Send className="mr-2 h-4 w-4"/>Send to Review</Button><Button variant="outline" disabled={!fields} onClick={exportCsv}><Download className="mr-2 h-4 w-4"/>Export CSV</Button><Button disabled={!fields} onClick={() => setMessage("Mock TMS accepted the rate confirmation.")}><Truck className="mr-2 h-4 w-4"/>Send to Mock TMS</Button></div>
         </div>
-        {message && <p role="status" className="mx-auto mt-2 max-w-screen-2xl text-right text-xs text-emerald-700">{message}</p>}
-      </footer>
+
+        <footer className="mt-4 border-t border-border bg-card py-4">
+          <div className="mx-auto grid max-w-screen-2xl items-center gap-4 2xl:grid-cols-[250px_minmax(180px,1fr)_auto]">
+            <div className="flex items-center gap-3 rounded-lg bg-muted/40 px-3 py-2">
+              <div className="relative flex h-16 w-16 shrink-0 items-center justify-center rounded-full p-[4px]" style={{ background: `conic-gradient(var(--primary) ${(averageConfidence ?? 0) * 3.6}deg, var(--border) 0deg)` }}>
+                <div className="flex h-full w-full items-center justify-center rounded-full bg-card text-sm font-bold tabular-nums text-primary">{averageConfidence === null ? "—" : `${averageConfidence}%`}</div>
+              </div>
+              <div className="min-w-0"><p className="text-xs font-semibold">Confidence score</p><p className="mt-1 text-xs font-medium text-primary">{averageConfidence === null ? extractState === "loading" ? "Extracting…" : "Awaiting extraction" : issues.length ? "Review flagged fields" : "Ready for broker review"}</p><p className="mt-0.5 text-[10px] text-muted-foreground">Model estimate · not calibrated</p></div>
+            </div>
+            <label className="min-w-0"><span className="mb-1 block text-xs font-semibold">Review notes</span><Textarea value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Add a broker note (optional)" className="min-h-11 resize-none" /></label>
+            <div className="flex flex-wrap items-end gap-2"><Button variant="outline" onClick={() => { setSentToReview(true); setMessage("Added to the broker review queue."); }}><Send className="mr-2 h-4 w-4"/>Send to Review</Button><Button variant="outline" disabled={!fields} onClick={exportCsv}><Download className="mr-2 h-4 w-4"/>Export CSV</Button><Button disabled={!fields} onClick={() => setMessage("Mock TMS accepted the rate confirmation.")}><Truck className="mr-2 h-4 w-4"/>Send to Mock TMS</Button></div>
+          </div>
+          {message && <p role="status" className="mx-auto mt-2 max-w-screen-2xl text-right text-xs text-emerald-700">{message}</p>}
+        </footer>
+      </main>
     </div>
   );
 }
