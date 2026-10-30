@@ -54,7 +54,7 @@ export function TopBar() {
         <div className="flex items-center gap-2 md:gap-4">
           <MobileNav />
           {/* Logo */}
-          <Link href="/knowledge" className="flex items-center gap-2 shrink-0">
+          <Link href="/documents" className="flex items-center gap-2 shrink-0">
             <Logo className="text-3xl" />
           </Link>
 

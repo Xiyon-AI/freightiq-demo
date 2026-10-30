@@ -48,7 +48,7 @@ export default function DashboardError({
           </Button>
           <Button
             variant="outline"
-            onClick={() => window.location.href = appPath('/knowledge')}
+            onClick={() => window.location.href = appPath('/documents')}
             className="gap-2"
           >
             <Home className="w-4 h-4" />

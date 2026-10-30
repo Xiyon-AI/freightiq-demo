@@ -53,7 +53,7 @@ export function Sidebar() {
       <nav className="flex-1 px-4 py-6 space-y-1">
         <NavItem href="/operations" icon={<Home className="w-5 h-5" strokeWidth={2} />} label="Home" active={pathname?.startsWith('/operations')} onPrefetch={() => prefetchRoute('/operations')} />
         <NavItem href="/intake" icon={<Inbox className="w-5 h-5" strokeWidth={2} />} label="Intake" active={pathname?.startsWith('/intake')} onPrefetch={() => prefetchRoute('/intake')} />
-        <NavItem href="/knowledge" icon={<Files className="w-5 h-5" strokeWidth={2} />} label="Documents" active={pathname?.startsWith('/knowledge')} onPrefetch={() => prefetchRoute('/knowledge')} />
+        <NavItem href="/documents" icon={<Files className="w-5 h-5" strokeWidth={2} />} label="Documents" active={pathname?.startsWith('/documents')} onPrefetch={() => prefetchRoute('/documents')} />
         <NavItem href="/automation" icon={<Workflow className="w-5 h-5" strokeWidth={2} />} label="Automation" active={pathname?.startsWith('/automation')} onPrefetch={() => prefetchRoute('/automation')} />
         <NavItem href="/knowledge" icon={<BookOpen className="w-5 h-5" strokeWidth={2} />} label="Knowledge" active={pathname?.startsWith('/knowledge')} onPrefetch={() => prefetchRoute('/knowledge')} />
         <NavItem href="/analytics" icon={<ChartNoAxesColumn className="w-5 h-5" strokeWidth={2} />} label="Analytics" active={pathname?.startsWith('/analytics')} onPrefetch={() => prefetchRoute('/analytics')} />

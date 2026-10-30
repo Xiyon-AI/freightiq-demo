@@ -70,7 +70,7 @@ export function CommandPalette() {
               <span>Operations</span>
             </CommandItem>
             <CommandItem
-              onSelect={() => runCommand(() => router.push('/knowledge'))}
+              onSelect={() => runCommand(() => router.push('/documents'))}
             >
               <FileText className="mr-2 h-4 w-4" />
               <span>Document</span>

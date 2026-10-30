@@ -15,6 +15,7 @@ export default function robots(): MetadataRoute.Robots {
         disallow: [
           '/api/',
           '/knowledge/',
+          '/documents/',
           '/operations/',
           '/tickets/',
           '/settings/',
@@ -32,6 +33,7 @@ export default function robots(): MetadataRoute.Robots {
         disallow: [
           '/api/',
           '/knowledge/',
+          '/documents/',
           '/operations/',
           '/tickets/',
           '/settings/',
