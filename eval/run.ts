@@ -97,10 +97,10 @@ async function listPdfs(directory: string): Promise<string[]> {
 }
 
 async function main() {
-  const apiKey = process.env.ANTHROPIC_API_KEY
-  const model = process.env.EXTRACTION_MODEL
-  if (!apiKey || !model) {
-    throw new Error('Set ANTHROPIC_API_KEY and EXTRACTION_MODEL before running the evaluation.')
+  const apiKey = process.env.GEMINI_API_KEY
+  const model = process.env.GEMINI_MODEL || 'gemini-3.8-flash'
+  if (!apiKey) {
+    throw new Error('Set GEMINI_API_KEY before running the evaluation. GEMINI_MODEL defaults to gemini-3.8-flash.')
   }
 
   const pdfs = await listPdfs(pdfDirectory)

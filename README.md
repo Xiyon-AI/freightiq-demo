@@ -4,7 +4,7 @@
 
 The evaluation runner extracts every PDF directly inside `samples/pdfs/` and compares it with the matching `samples/truth/<name>.json` record. Truth files must conform to the `LoadDocument` schema.
 
-Set `ANTHROPIC_API_KEY` and `EXTRACTION_MODEL`, then run:
+Copy `.env.example` to `.env.local`, add your Gemini API key from [Google AI Studio](https://aistudio.google.com/apikey), and optionally set `GEMINI_MODEL` (defaults to `gemini-3.8-flash`). Then run:
 
 ```sh
 pnpm eval

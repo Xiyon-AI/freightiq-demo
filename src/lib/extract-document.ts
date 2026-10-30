@@ -1,10 +1,15 @@
-import Anthropic from '@anthropic-ai/sdk'
+import { GoogleGenAI } from '@google/genai'
 import { LoadDocument, loadDocumentJsonSchema, type LoadDocumentT } from './schema'
 import { SYSTEM_PROMPT } from './prompt'
 
+export type ExtractionUsage = {
+  input_tokens: number
+  output_tokens: number
+}
+
 export type ExtractedFreightDocument = {
   fields: LoadDocumentT
-  usage: Anthropic.Messages.Usage
+  usage: ExtractionUsage
 }
 
 export class ExtractionResultMissingError extends Error {}
@@ -13,6 +18,12 @@ export class ExtractionSchemaMismatchError extends Error {
   constructor(readonly issues: unknown[]) {
     super('The extraction result did not match the schema.')
   }
+}
+
+function getGeminiResponseSchema() {
+  const schema = structuredClone(loadDocumentJsonSchema) as Record<string, unknown>
+  delete schema.$schema
+  return schema
 }
 
 export async function extractFreightDocument({
@@ -24,39 +35,50 @@ export async function extractFreightDocument({
   mediaType: 'application/pdf' | 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp'
   model: string
 }): Promise<ExtractedFreightDocument> {
-  const client = new Anthropic()
-  const encodedDocument = Buffer.from(data).toString('base64')
-  const isPdf = mediaType === 'application/pdf'
-  const response = await client.messages.create({
+  const apiKey = process.env.GEMINI_API_KEY
+  if (!apiKey) throw new Error('GEMINI_API_KEY is not configured.')
+
+  const ai = new GoogleGenAI({ apiKey })
+  const response = await ai.models.generateContent({
     model,
-    max_tokens: 2000,
-    system: SYSTEM_PROMPT,
-    tools: [{
-      name: 'record_document',
-      description: 'Record the data extracted from a freight document',
-      input_schema: loadDocumentJsonSchema as any,
-    }],
-    tool_choice: { type: 'tool', name: 'record_document' },
-    messages: [{
+    contents: [{
       role: 'user',
-      content: [
-        isPdf
-          ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: encodedDocument } }
-          : { type: 'image', source: { type: 'base64', media_type: mediaType, data: encodedDocument } },
-        { type: 'text', text: 'Extract this document.' },
+      parts: [
+        { inlineData: { data: Buffer.from(data).toString('base64'), mimeType: mediaType } },
+        { text: 'Extract this freight document.' },
       ],
     }],
+    config: {
+      systemInstruction: SYSTEM_PROMPT,
+      responseMimeType: 'application/json',
+      responseJsonSchema: getGeminiResponseSchema(),
+      maxOutputTokens: 2000,
+      temperature: 0,
+    },
   })
 
-  const toolResult = response.content.find((block) => block.type === 'tool_use')
-  if (!toolResult || toolResult.type !== 'tool_use') {
-    throw new ExtractionResultMissingError('The extraction model returned no structured result.')
+  const responseText = response.text
+  if (!responseText) {
+    throw new ExtractionResultMissingError('Gemini returned no structured result.')
   }
 
-  const parsed = LoadDocument.safeParse(toolResult.input)
+  let output: unknown
+  try {
+    output = JSON.parse(responseText)
+  } catch {
+    throw new ExtractionSchemaMismatchError([{ message: 'Gemini returned invalid JSON.' }])
+  }
+
+  const parsed = LoadDocument.safeParse(output)
   if (!parsed.success) {
     throw new ExtractionSchemaMismatchError(parsed.error.issues)
   }
 
-  return { fields: parsed.data, usage: response.usage }
+  return {
+    fields: parsed.data,
+    usage: {
+      input_tokens: response.usageMetadata?.promptTokenCount ?? 0,
+      output_tokens: response.usageMetadata?.candidatesTokenCount ?? 0,
+    },
+  }
 }

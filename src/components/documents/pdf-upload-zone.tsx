@@ -47,8 +47,8 @@ export function PdfUploadZone({ onUploadComplete }: PdfUploadZoneProps) {
         setStage("error");
         return;
       }
-      if (file.size > 50 * 1024 * 1024) {
-        setErrorMsg(t('common.fileSizeError') || "File exceeds 50MB limit");
+      if (file.size > 4 * 1024 * 1024) {
+        setErrorMsg("File exceeds the 4 MB extraction limit");
         setStage("error");
         return;
       }
@@ -130,7 +130,7 @@ export function PdfUploadZone({ onUploadComplete }: PdfUploadZoneProps) {
               {t('knowledge.uploadPlaceholder')}
             </p>
             <p className="text-xs text-neutral-500 mt-1">
-              Rate confirmation PDF · up to 50 MB · processed locally in this demo
+              Rate confirmation PDF · up to 4 MB · extracted with Gemini
             </p>
           </>
         )}

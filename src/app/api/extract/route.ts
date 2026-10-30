@@ -48,10 +48,9 @@ export async function POST(req: Request) {
     return Response.json({ error: 'Upload a PDF, JPEG, PNG, GIF, or WebP file' }, { status: 415 })
   }
 
-  const apiKey = process.env.ANTHROPIC_API_KEY
-  const model = process.env.EXTRACTION_MODEL
-  if (!apiKey || !model) {
-    return Response.json({ error: 'Document extraction is not configured' }, { status: 503 })
+  const model = process.env.GEMINI_MODEL || 'gemini-3.8-flash'
+  if (!process.env.GEMINI_API_KEY) {
+    return Response.json({ error: 'Gemini document extraction is not configured' }, { status: 503 })
   }
 
   try {
@@ -74,6 +73,9 @@ export async function POST(req: Request) {
       return Response.json({ error: 'Schema mismatch', details: error.issues }, { status: 502 })
     }
     console.error('Document extraction request failed', error)
-    return Response.json({ error: 'Document extraction failed' }, { status: 502 })
+    const developmentMessage = error instanceof Error ? error.message : 'Unknown Gemini API error'
+    return Response.json({
+      error: process.env.NODE_ENV === 'development' ? developmentMessage : 'Document extraction failed',
+    }, { status: 502 })
   }
 }
