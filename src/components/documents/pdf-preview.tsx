@@ -29,13 +29,7 @@ export function PdfPreview({ file, filename }: { file: File; filename: string })
   if (!data) return <div className="flex items-center gap-2 p-8 text-sm text-muted-foreground"><LoaderCircle className="h-4 w-4 animate-spin"/>Loading PDF…</div>;
 
   return <div className="flex min-h-full flex-col items-center gap-3">
-    {pageCount > 0 && <div className="sticky top-0 z-10 flex w-full items-center justify-between gap-3 rounded-lg border border-border bg-card/95 px-3 py-2 text-xs shadow-sm backdrop-blur">
-      <span className="font-medium">PDF page {pageNumber} of {pageCount}</span>
-      <div className="flex items-center gap-2">
-        <button type="button" className="rounded-md border border-border px-3 py-1.5 hover:bg-muted disabled:opacity-50" disabled={pageNumber <= 1} onClick={() => setPageNumber((page) => Math.max(1, page - 1))}>Previous</button>
-        <button type="button" className="rounded-md border border-border px-3 py-1.5 hover:bg-muted disabled:opacity-50" disabled={pageNumber >= pageCount} onClick={() => setPageNumber((page) => Math.min(pageCount, page + 1))}>Next</button>
-      </div>
-    </div>}
+    
     <Document
       file={{ data: new Uint8Array(data) }}
       onLoadSuccess={({ numPages }) => { setPageCount(numPages); setError(""); }}
