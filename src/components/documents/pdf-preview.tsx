@@ -11,8 +11,8 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
 
 export function PdfPreview({ file, filename }: { file: File; filename: string }) {
   const [data, setData] = useState<ArrayBuffer | null>(null);
-  const [pageCount, setPageCount] = useState(0);
-  const [pageNumber, setPageNumber] = useState(1);
+  const [pageCount, setPageCount] = useState(1);
+  const [pageNumber] = useState(1);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -29,7 +29,7 @@ export function PdfPreview({ file, filename }: { file: File; filename: string })
   if (!data) return <div className="flex items-center gap-2 p-8 text-sm text-muted-foreground"><LoaderCircle className="h-4 w-4 animate-spin"/>Loading PDF…</div>;
 
   return <div className="flex min-h-full flex-col items-center gap-3">
-    
+    {pageCount > 1 && <span className="text-[11px] text-muted-foreground">Page {pageNumber} of {pageCount}</span>}
     <Document
       file={{ data: new Uint8Array(data) }}
       onLoadSuccess={({ numPages }) => { setPageCount(numPages); setError(""); }}

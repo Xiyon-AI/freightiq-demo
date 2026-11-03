@@ -112,7 +112,7 @@ export async function extractFreightDocument({
 
   const result = await response.json().catch(() => null) as OpenRouterResponse | null
   if (!response.ok) {
-    throw new Error(result?.error?.message || `OpenRouter request failed (${response.status}).`)
+    throw new Error(result?.error?.message || `Extraction request failed (${response.status}).`)
   }
 
   const toolCall = result?.choices?.[0]?.message?.tool_calls?.find(
@@ -120,14 +120,14 @@ export async function extractFreightDocument({
   )
   const rawOutput = toolCall?.function?.arguments
   if (!rawOutput) {
-    throw new ExtractionResultMissingError('OpenRouter returned no structured extraction.')
+    throw new ExtractionResultMissingError('Extraction service returned no structured data.')
   }
 
   let output: unknown
   try {
     output = JSON.parse(rawOutput)
   } catch {
-    throw new ExtractionSchemaMismatchError([{ message: 'OpenRouter returned invalid JSON.' }])
+    throw new ExtractionSchemaMismatchError([{ message: 'Extraction service returned invalid format.' }])
   }
 
   const extracted = output && typeof output === 'object' ? output as {

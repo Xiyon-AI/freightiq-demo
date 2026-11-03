@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, CheckCircle2, FileCheck2, FileUp, FileText, Send, ShieldCheck, Table2, Truck } from "lucide-react";
+import { CheckCircle2, FileCheck2, FileUp, FileText, Send, ShieldCheck, Table2, Truck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const requiredFeatures = [
@@ -16,7 +16,7 @@ export default function GuidesPage() {
   return (
     <div className="min-h-full p-4 lg:p-8">
       <div className="mx-auto max-w-5xl space-y-8">
-        <div className="rounded-2xl border border-border bg-card p-6 shadow-sm sm:p-9"><div className="mb-4 inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary"><Truck className="h-3.5 w-3.5"/>Freight broker demo</div><h1 className="text-3xl font-bold tracking-tight">Rate confirmation workflow</h1><p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground">Use FreightIQ to turn a carrier rate confirmation PDF into validated, reviewable data that is ready for a TMS handoff.</p><div className="mt-6 flex flex-wrap gap-3"><Button asChild><Link href="/documents"><FileUp className="mr-1.5 h-4 w-4"/>Open documents</Link></Button><Button asChild variant="outline"><Link href="/intake">View intake queue <ArrowRight className="ml-1.5 h-4 w-4"/></Link></Button></div></div>
+        <div className="rounded-2xl border border-border bg-card p-6 shadow-sm sm:p-9"><div className="mb-4 inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary"><Truck className="h-3.5 w-3.5"/>Freight broker demo</div><h1 className="text-3xl font-bold tracking-tight">Rate confirmation workflow</h1><p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground">Use FreightIQ to turn a carrier rate confirmation PDF into validated, reviewable data that is ready for a TMS handoff.</p><div className="mt-6 flex flex-wrap gap-3"><Button asChild><Link href="/documents"><FileUp className="mr-1.5 h-4 w-4"/>Open documents</Link></Button></div></div>
 
         <section><div className="mb-4"><h2 className="text-lg font-semibold">Demo workflow</h2><p className="mt-1 text-sm text-muted-foreground">A broker reviews each confirmation before exporting or sending it to the mock TMS.</p></div><div className="grid gap-4 md:grid-cols-3"><Step number="01" icon={<FileText className="h-5 w-5"/>} title="Upload or choose a sample" description="Use a carrier PDF or the included sample rate confirmation."/><Step number="02" icon={<FileCheck2 className="h-5 w-5"/>} title="Extract and validate" description="Review structured fields and check required values, dates, and totals."/><Step number="03" icon={<Send className="h-5 w-5"/>} title="Approve and hand off" description="Make any corrections, export CSV, or send the record to the mock TMS."/></div></section>
 

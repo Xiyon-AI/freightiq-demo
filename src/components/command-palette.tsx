@@ -4,9 +4,6 @@ import * as React from 'react'
 import { useRouter } from 'next/navigation'
 import { 
   FileText, 
-  Settings, 
-  Home,
-  Activity,
   Search
 } from 'lucide-react'
 import {
@@ -50,33 +47,10 @@ export function CommandPalette() {
           
           <CommandGroup heading="Navigation">
             <CommandItem
-              onSelect={() => runCommand(() => router.push('/operations'))}
-            >
-              <Home className="mr-2 h-4 w-4" />
-              <span>Home</span>
-            </CommandItem>
-            <CommandItem
-              onSelect={() => runCommand(() => router.push('/operations'))}
-            >
-              <Activity className="mr-2 h-4 w-4" />
-              <span>Operations</span>
-            </CommandItem>
-            <CommandItem
               onSelect={() => runCommand(() => router.push('/documents'))}
             >
               <FileText className="mr-2 h-4 w-4" />
               <span>Documents</span>
-            </CommandItem>
-          </CommandGroup>
-
-          <CommandSeparator />
-
-          <CommandGroup heading="Settings">
-            <CommandItem
-              onSelect={() => runCommand(() => router.push('/settings'))}
-            >
-              <Settings className="mr-2 h-4 w-4" />
-              <span>Settings</span>
             </CommandItem>
           </CommandGroup>
 

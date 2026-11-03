@@ -130,10 +130,7 @@ export function PdfUploadZone({ onUploadComplete }: PdfUploadZoneProps) {
               {t('knowledge.uploadPlaceholder')}
             </p>
             <p className="text-xs text-neutral-500 mt-1">
-              Rate confirmation PDF · up to 4 MB · extracted with OpenRouter
-            </p>
-            <p className="mt-2 max-w-md text-[11px] leading-relaxed text-amber-700">
-              For the free model, use synthetic or redacted documents. Avoid uploading confidential broker or carrier data.
+              Rate confirmation PDF · up to 4 MB
             </p>
           </>
         )}

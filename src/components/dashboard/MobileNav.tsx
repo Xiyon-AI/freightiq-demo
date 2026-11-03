@@ -3,7 +3,7 @@
 import React, { useState, useCallback } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Menu, Home, Inbox, Files, Workflow, BookOpen, ChartNoAxesColumn, Settings } from 'lucide-react'
+import { Menu, Files } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetHeader } from '@/components/ui/sheet'
 import { Logo } from '@/components/shared/Logo'
@@ -65,13 +65,7 @@ export function MobileNav() {
         </SheetHeader>
         {/* Navigation */}
         <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
-          <NavItem href="/operations" onClick={() => setOpen(false)} icon={<Home className="w-5 h-5" strokeWidth={2} />} label="Home" active={pathname?.startsWith('/operations')} onPrefetch={() => prefetchRoute('/operations')} />
-          <NavItem href="/intake" onClick={() => setOpen(false)} icon={<Inbox className="w-5 h-5" strokeWidth={2} />} label="Intake" active={pathname?.startsWith('/intake')} onPrefetch={() => prefetchRoute('/intake')} />
           <NavItem href="/documents" onClick={() => setOpen(false)} icon={<Files className="w-5 h-5" strokeWidth={2} />} label="Documents" active={pathname?.startsWith('/documents')} onPrefetch={() => prefetchRoute('/documents')} />
-          <NavItem href="/automation" onClick={() => setOpen(false)} icon={<Workflow className="w-5 h-5" strokeWidth={2} />} label="Automation" active={pathname?.startsWith('/automation')} onPrefetch={() => prefetchRoute('/automation')} />
-          <NavItem href="/knowledge" onClick={() => setOpen(false)} icon={<BookOpen className="w-5 h-5" strokeWidth={2} />} label="Knowledge" active={pathname?.startsWith('/knowledge')} onPrefetch={() => prefetchRoute('/knowledge')} />
-          <NavItem href="/analytics" onClick={() => setOpen(false)} icon={<ChartNoAxesColumn className="w-5 h-5" strokeWidth={2} />} label="Analytics" active={pathname?.startsWith('/analytics')} onPrefetch={() => prefetchRoute('/analytics')} />
-          <NavItem href="/settings" onClick={() => setOpen(false)} icon={<Settings className="w-5 h-5" strokeWidth={2} />} label="Settings" active={pathname?.startsWith('/settings')} onPrefetch={() => prefetchRoute('/settings')} />
         </nav>
 
         <div className="border-t border-border">

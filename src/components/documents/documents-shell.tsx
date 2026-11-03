@@ -45,6 +45,14 @@ export function DocumentsShell() {
             <Button variant="outline" onClick={openSample}><FileText className="mr-2 h-4 w-4" />Open sample</Button>
           </div>
 
+          {/* Xiyon AI CTA */}
+          <div className="mt-2 rounded-xl border border-border bg-card p-5 text-center text-sm shadow-xs">
+            <span className="font-semibold text-foreground">Built by Xiyon AI.</span>{" "}
+            <span className="text-muted-foreground">Send 3 redacted rate confirmations and I&apos;ll run them for you —</span>{" "}
+            <a href="mailto:raiyanjiyon814@gmail.com" className="font-medium text-primary underline underline-offset-2 hover:text-primary/80 transition-colors">
+              raiyanjiyon814@gmail.com
+            </a>
+          </div>
         </div>
       </div>
       </div>

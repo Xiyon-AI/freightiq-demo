@@ -50,7 +50,7 @@ export async function POST(req: Request) {
 
   const model = process.env.OPENROUTER_MODEL || 'nvidia/nemotron-3.5-super-vl:free'
   if (!process.env.OPENROUTER_API_KEY) {
-    return Response.json({ error: 'OpenRouter extraction is not configured. Set OPENROUTER_API_KEY.' }, { status: 503 })
+    return Response.json({ error: 'Document extraction service is not configured. Please contact support.' }, { status: 503 })
   }
 
   try {
@@ -75,7 +75,7 @@ export async function POST(req: Request) {
       return Response.json({ error: 'Schema mismatch', details: error.issues }, { status: 502 })
     }
     console.error('Document extraction request failed', error)
-    const developmentMessage = error instanceof Error ? error.message : 'Unknown OpenRouter API error'
+    const developmentMessage = error instanceof Error ? error.message : 'Document extraction failed'
     return Response.json({
       error: process.env.NODE_ENV === 'development' ? developmentMessage : 'Document extraction failed',
     }, { status: 502 })

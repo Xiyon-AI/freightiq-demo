@@ -12,11 +12,11 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { MobileNav } from './MobileNav'
-import { useLanguage, type Locale } from '@/lib/i18n/LanguageContext'
+import { useLanguage } from '@/lib/i18n/LanguageContext'
 
 export function TopBar() {
   const pathname = usePathname()
-  const { locale, setLocale, t } = useLanguage()
+  const { t } = useLanguage()
   const { theme, setTheme } = useTheme()
 
   const handleThemeChange = (newTheme: 'system' | 'dark' | 'light') => {
@@ -34,11 +34,6 @@ export function TopBar() {
   }
 
   const breadcrumbs = getBreadcrumbs()
-
-  const locales: { value: Locale; label: string }[] = [
-    { value: 'en', label: 'EN' },
-    { value: 'bn', label: 'বাংলা' },
-  ]
 
   return (
     <header className="fixed top-0 left-0 right-0 h-16 bg-background border-b border-border z-30">
