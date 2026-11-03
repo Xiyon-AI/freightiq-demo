@@ -33,6 +33,7 @@ import {
   TriangleAlert,
   Truck,
   Upload,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -118,7 +119,7 @@ const ALL_RULES: Array<{ group: typeof VALIDATION_GROUPS[number]; label: string 
 
 function getValidationGroup(issue: ValidationIssue): typeof VALIDATION_GROUPS[number] {
   const message = issue.message.toLowerCase();
-  if (message.includes("line item") || message.includes("line items add up") || message.includes("totals") || message.includes("match the total rate")) {
+  if (message.includes("line item") || message.includes("line items add up") || message.includes("totals") || message.includes("match the total rate") || message.includes("printed total")) {
     return "totals";
   }
   if (message.includes("date") || issue.field.includes("date")) return "dates";
@@ -189,7 +190,6 @@ function extractFileOnce(file: File): Promise<ExtractionResponse> {
   if (existingRequest) return existingRequest;
 
   const request = (async () => {
-    // In-memory / session tracking that skips duplicates on sample
     const form = new FormData();
     form.append("file", file);
     const seen = JSON.parse(sessionStorage.getItem("freightiq-seen-load-numbers") || "[]") as string[];
@@ -223,12 +223,8 @@ export function DocumentReview({ document, onClose }: { document: ReviewDocument
   const [extractError, setExtractError] = useState("");
   const [expandedStops, setExpandedStops] = useState(true);
   const [expandedLineItems, setExpandedLineItems] = useState(true);
+  const [reviewingFix, setReviewingFix] = useState(false);
   const isPdf = document.filename.toLowerCase().endsWith(".pdf");
-
-  // Reset duplicate session tracking on page load so refresh is always clean
-  useEffect(() => {
-    // Session state clean
-  }, []);
 
   const runExtraction = useCallback(async () => {
     if (!document.file || isSampleDoc) return;
@@ -256,6 +252,7 @@ export function DocumentReview({ document, onClose }: { document: ReviewDocument
     setIssues([]);
     setExtractState("success");
     setExtractError("");
+    setReviewingFix(false);
   }, []);
 
   const retryExtraction = useCallback(() => {
@@ -301,9 +298,35 @@ export function DocumentReview({ document, onClose }: { document: ReviewDocument
     Math.round(Math.abs(lineItemTotal - fields.total_rate) * 100) > 1;
   const totalDiff = fields?.total_rate !== null && fields?.total_rate !== undefined ? Math.abs(lineItemTotal - fields.total_rate) : 0;
 
-  // Field renderer with consistent colors and expandable stops/line items
+  // Primary issue for the activity timeline (prioritizes error, then warning, then info)
+  const primaryError = issues.find((i) => i.severity === "error");
+  const primaryWarning = issues.find((i) => i.severity === "warning");
+  const primaryInfo = issues.find((i) => i.severity === "info");
+
+  let timelineTitle = "Rule checks";
+  let timelineDetail = fields ? "All validation checks passed" : "Waiting for validation";
+  let TimelineIcon = CheckCircle2;
+  let timelineAlert = false;
+
+  if (primaryError) {
+    timelineTitle = "Totals mismatch error";
+    timelineDetail = primaryError.message;
+    TimelineIcon = TriangleAlert;
+    timelineAlert = true;
+  } else if (primaryWarning) {
+    timelineTitle = "Rule check warning";
+    timelineDetail = primaryWarning.message;
+    TimelineIcon = CircleAlert;
+    timelineAlert = false;
+  } else if (primaryInfo) {
+    timelineTitle = "Session note";
+    timelineDetail = primaryInfo.message;
+    TimelineIcon = Info;
+    timelineAlert = false;
+  }
+
+  // Field renderer: ample value width, status shrunk to icon, no overlap with toggles
   const renderField = (key: keyof LoadDocumentT, value: LoadDocumentT[keyof LoadDocumentT]) => {
-    // Find all issues matching this field key
     const fieldIssues = issues.filter((issue) => {
       if (issue.field === key) return true;
       if (issue.field.startsWith(`${key}.`)) return true;
@@ -333,86 +356,75 @@ export function DocumentReview({ document, onClose }: { document: ReviewDocument
     } else if (key === "weight_lbs" && typeof value === "number") {
       summary = `${value.toLocaleString()} lbs`;
     } else if (key === "total_rate" && typeof value === "number") {
-      summary = `${fields?.currency || "USD"} $${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      summary = `$${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     } else {
       summary = String(value);
     }
 
-    // Determine row styling consistently: Red for error, Amber for warning, Blue for info, Clean for verified
+    // Row styling: Red for error, Amber for warning, Blue for info, Clean for verified
     let borderAndBg = "border-border bg-card hover:bg-muted/30";
-    let statusBadge = (
-      <span className="flex items-center gap-1.5 text-xs text-emerald-600 font-medium">
-        <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
-        <span className="hidden sm:inline text-[11px]">Valid</span>
-      </span>
-    );
+    let statusIcon = <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" aria-label="Valid check" />;
 
     if (hasError) {
       borderAndBg = "border-rose-300 bg-rose-50/70 dark:border-rose-900/60 dark:bg-rose-950/25";
-      statusBadge = (
-        <span className="flex items-center gap-1.5 text-xs text-rose-700 dark:text-rose-400 font-semibold">
-          <CircleAlert className="h-4 w-4 shrink-0 text-rose-600" />
-          <span className="hidden sm:inline text-[11px]">Failed</span>
-        </span>
-      );
+      statusIcon = <CircleAlert className="h-4 w-4 shrink-0 text-rose-600" aria-label="Check failed" />;
     } else if (hasWarning) {
       borderAndBg = "border-amber-300 bg-amber-50/70 dark:border-amber-900/60 dark:bg-amber-950/25";
-      statusBadge = (
-        <span className="flex items-center gap-1.5 text-xs text-amber-700 dark:text-amber-400 font-medium">
-          <CircleAlert className="h-4 w-4 shrink-0 text-amber-600" />
-          <span className="hidden sm:inline text-[11px]">Review</span>
-        </span>
-      );
+      statusIcon = <CircleAlert className="h-4 w-4 shrink-0 text-amber-600" aria-label="Warning" />;
     } else if (hasInfo) {
       borderAndBg = "border-blue-200 bg-blue-50/50 dark:border-blue-900/40 dark:bg-blue-950/20";
-      statusBadge = (
-        <span className="flex items-center gap-1.5 text-xs text-blue-700 dark:text-blue-400 font-medium">
-          <Info className="h-4 w-4 shrink-0 text-blue-600" />
-          <span className="hidden sm:inline text-[11px]">Note</span>
-        </span>
-      );
+      statusIcon = <Info className="h-4 w-4 shrink-0 text-blue-600" aria-label="Information note" />;
     }
 
     const isStops = key === "stops";
     const isLineItems = key === "line_items";
+    const isTotalRate = key === "total_rate";
 
     return (
       <div id={`field-${key}`} key={key} className={`rounded-lg border px-3.5 py-2.5 transition-colors ${borderAndBg}`}>
-        <div className="grid grid-cols-[200px_minmax(0,1fr)_auto] items-center gap-2 sm:grid-cols-[210px_minmax(0,1fr)_auto] sm:gap-3">
+        {/* Generous value width, shrunk status icon to prevent truncation */}
+        <div className="grid grid-cols-[135px_1fr_24px] items-center gap-2 sm:grid-cols-[145px_1fr_24px] sm:gap-3">
           <div className="flex min-w-0 items-center gap-2">
             <Icon className="h-4 w-4 shrink-0 text-primary" />
             <span className="truncate text-xs font-semibold text-foreground">{FIELD_META[key].label}</span>
           </div>
 
-          <div className="min-w-0 flex items-center gap-2">
-            <p className={`truncate text-xs sm:text-sm ${value === null ? "italic text-muted-foreground" : "text-foreground font-medium"}`}>
-              {summary}
-            </p>
-            {isStops && Array.isArray(value) && value.length > 0 && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 px-1.5 text-[11px] text-muted-foreground hover:text-foreground"
-                onClick={() => setExpandedStops((prev) => !prev)}
-              >
-                {expandedStops ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
-                <span className="ml-1 text-[10px]">{expandedStops ? "Hide" : "Details"}</span>
-              </Button>
-            )}
-            {isLineItems && Array.isArray(value) && value.length > 0 && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 px-1.5 text-[11px] text-muted-foreground hover:text-foreground"
-                onClick={() => setExpandedLineItems((prev) => !prev)}
-              >
-                {expandedLineItems ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
-                <span className="ml-1 text-[10px]">{expandedLineItems ? "Hide" : "Breakdown"}</span>
-              </Button>
+          <div className="min-w-0 pr-1">
+            {isStops || isLineItems ? (
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs sm:text-sm font-medium text-foreground whitespace-nowrap shrink-0">{summary}</span>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (isStops) setExpandedStops((prev) => !prev);
+                    if (isLineItems) setExpandedLineItems((prev) => !prev);
+                  }}
+                  className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-semibold text-primary hover:bg-primary/10 transition-colors shrink-0"
+                >
+                  {isStops ? (expandedStops ? "Hide details" : "View stops") : (expandedLineItems ? "Hide breakdown" : "View items")}
+                  {(isStops ? expandedStops : expandedLineItems) ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                </button>
+              </div>
+            ) : isTotalRate && hasError ? (
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs sm:text-sm font-bold text-rose-900 dark:text-rose-200 whitespace-nowrap font-mono">{summary}</span>
+                <button
+                  type="button"
+                  onClick={() => setReviewingFix(true)}
+                  className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-semibold text-rose-700 bg-rose-100 hover:bg-rose-200 dark:bg-rose-900/50 dark:text-rose-300 transition-colors shrink-0 cursor-pointer"
+                >
+                  Review &amp; Fix
+                </button>
+              </div>
+            ) : (
+              <p className={`break-words text-xs sm:text-sm ${value === null ? "italic text-muted-foreground" : "text-foreground font-medium"}`}>
+                {summary}
+              </p>
             )}
           </div>
 
-          <div className="shrink-0 text-right">{statusBadge}</div>
+          <div className="shrink-0 flex justify-end">{statusIcon}</div>
         </div>
 
         {/* Expandable stops breakdown */}
@@ -481,11 +493,21 @@ export function DocumentReview({ document, onClose }: { document: ReviewDocument
               </div>
             </div>
             {hasTotalMismatch && (
-              <div className="flex items-start gap-2 rounded-md border border-rose-200 bg-rose-50/90 p-2.5 text-[11px] text-rose-800 dark:border-rose-900/40 dark:bg-rose-950/30 dark:text-rose-300">
-                <TriangleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0 text-rose-600" />
-                <span>
-                  <strong>Discrepancy:</strong> Agreed total rate reads ${fields.total_rate?.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} but line items add up to ${lineItemTotal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (difference ${totalDiff.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}).
-                </span>
+              <div className="flex items-start justify-between gap-3 rounded-md border border-rose-200 bg-rose-50/90 p-2.5 text-[11px] text-rose-800 dark:border-rose-900/40 dark:bg-rose-950/30 dark:text-rose-300">
+                <div className="flex items-start gap-2">
+                  <TriangleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0 text-rose-600" />
+                  <span>
+                    <strong>Discrepancy:</strong> Printed total reads ${fields.total_rate?.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} but line items add up to ${lineItemTotal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (difference ${totalDiff.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}).
+                  </span>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-6 px-2 text-[10px] shrink-0 border-rose-300 text-rose-800 hover:bg-rose-100"
+                  onClick={() => setReviewingFix(true)}
+                >
+                  Fix
+                </Button>
               </div>
             )}
           </div>
@@ -498,7 +520,7 @@ export function DocumentReview({ document, onClose }: { document: ReviewDocument
     { title: "Document uploaded", detail: isSampleDoc ? "Sample_Rate_Confirmation_RC-10482.pdf" : document.filename, icon: Upload, done: true, alert: false },
     { title: "Data extracted", detail: extractState === "success" ? "Structured fields are ready" : extractState === "loading" ? "Extraction in progress" : extractState === "error" ? "Extraction failed" : "Waiting for extraction", icon: Sparkles, done: extractState === "success", alert: extractState === "error" },
     { title: "Validation checks", detail: fields ? `${passedChecks} of ${ALL_RULES.length} passed · ${warningCount} warnings · ${failedCount} failed` : "Waiting for extracted data", icon: ListChecks, done: Boolean(fields), alert: failedCount > 0 },
-    { title: issues.length ? "Rule checks flagged" : "Rule checks", detail: issues.length ? (issues[0]?.message || "Rule issues detected") : fields ? "All validation checks passed" : "Waiting for validation", icon: failedCount > 0 ? TriangleAlert : issues.length > 0 ? CircleAlert : CheckCircle2, done: Boolean(fields), alert: failedCount > 0 },
+    { title: timelineTitle, detail: timelineDetail, icon: TimelineIcon, done: Boolean(fields), alert: timelineAlert },
     { title: sentToReview ? "Sent to review" : "Review queue", detail: sentToReview ? "Added to the current review queue" : "Waiting for broker action", icon: Send, done: sentToReview, alert: false },
   ];
   const visibleActivity = showAllActivity ? activity : activity.slice(0, 4);
@@ -522,9 +544,9 @@ export function DocumentReview({ document, onClose }: { document: ReviewDocument
       </header>
 
       <main className="min-h-0 w-full max-w-screen-2xl flex-1 self-center overflow-auto p-4 lg:p-6">
-        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">
-          {/* Left: Source Document / Sample */}
-          <section className="flex min-h-[420px] flex-col overflow-hidden rounded-xl border border-border bg-card">
+        <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">
+          {/* Left: Source Document / Sample (Sticky so user can compare while reviewing) */}
+          <section className="flex min-h-[420px] flex-col overflow-hidden rounded-xl border border-border bg-card xl:sticky xl:top-0 xl:h-[calc(100vh-14.5rem)] xl:max-h-[calc(100vh-14.5rem)]">
             <div className="flex items-center justify-between border-b border-border px-4 py-3">
               <div className="flex items-center gap-2 text-sm font-semibold">
                 <FileText className="h-4 w-4 text-primary" /> Source {isPdf ? "PDF" : "Document"}
@@ -610,12 +632,13 @@ export function DocumentReview({ document, onClose }: { document: ReviewDocument
                   </pre>
                 ) : (
                   <div className="space-y-5">
-                    {/* Header with widened Field column to prevent truncation */}
-                    <div className="grid grid-cols-[200px_minmax(0,1fr)_auto] gap-2 px-3 text-[10px] font-medium uppercase tracking-wide text-muted-foreground sm:grid-cols-[210px_minmax(0,1fr)_auto] sm:gap-3">
+                    {/* Clean single-line header without awkward wrapping */}
+                    <div className="grid grid-cols-[135px_1fr_24px] items-center gap-2 px-3.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground sm:grid-cols-[145px_1fr_24px] sm:gap-3">
                       <span>Field</span>
-                      <span>Extracted value</span>
-                      <span className="text-right">Status</span>
+                      <span>Extracted Value</span>
+                      <span className="text-right"></span>
                     </div>
+
                     <div className="space-y-2">
                       {(Object.entries(fields) as [keyof LoadDocumentT, LoadDocumentT[keyof LoadDocumentT]][]).map(
                         ([key, value]) => renderField(key, value)
@@ -643,6 +666,7 @@ export function DocumentReview({ document, onClose }: { document: ReviewDocument
                           {issues.map((issue, index) => {
                             const formattedLabel = formatFieldLabel(issue.field, fields);
                             const rootField = ((issue.field.split(".")[0] ?? "").split("[")[0] ?? "") as keyof LoadDocumentT;
+                            const isTotals = rootField === "total_rate" || getValidationGroup(issue) === "totals";
 
                             let tone = "border-amber-200 bg-amber-50/70 text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-300";
                             let IssueIcon = CircleAlert;
@@ -674,13 +698,17 @@ export function DocumentReview({ document, onClose }: { document: ReviewDocument
                                   variant="outline"
                                   size="sm"
                                   className="h-7 shrink-0 px-2 text-[11px]"
-                                  onClick={() =>
-                                    window.document
-                                      .getElementById(`field-${rootField}`)
-                                      ?.scrollIntoView({ behavior: "smooth", block: "center" })
-                                  }
+                                  onClick={() => {
+                                    if (isTotals) {
+                                      setReviewingFix(true);
+                                    } else {
+                                      window.document
+                                        .getElementById(`field-${rootField}`)
+                                        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+                                    }
+                                  }}
                                 >
-                                  Review
+                                  {isTotals ? "Review & Fix" : "Review"}
                                 </Button>
                               </div>
                             );
@@ -773,7 +801,7 @@ export function DocumentReview({ document, onClose }: { document: ReviewDocument
                 </div>
                 <div className="space-y-0">
                   {visibleActivity.map((event, index) => {
-                    const Icon = event.icon;
+                    const TimelineIconComponent = event.icon;
                     const color = event.alert
                       ? "bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300"
                       : event.done
@@ -785,7 +813,7 @@ export function DocumentReview({ document, onClose }: { document: ReviewDocument
                           <span className="absolute bottom-0 left-[15px] top-8 w-px bg-border" />
                         )}
                         <span className={`relative z-[1] flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${color}`}>
-                          <Icon className="h-4 w-4" />
+                          <TimelineIconComponent className="h-4 w-4" />
                         </span>
                         <div className="min-w-0 pt-0.5">
                           <p className={`text-xs font-semibold ${event.alert ? "text-rose-700 dark:text-rose-400" : "text-foreground"}`}>
@@ -811,10 +839,10 @@ export function DocumentReview({ document, onClose }: { document: ReviewDocument
           </section>
         </div>
 
-        {/* Footer with all 8 Rule Results, protected TMS button, and Xiyon AI CTA */}
+        {/* Footer with all 8 Rule Results, explained TMS button, and Xiyon AI CTA */}
         <footer className="mt-4 border-t border-border bg-card py-4">
           <div className="mx-auto grid max-w-screen-2xl items-center gap-4 xl:grid-cols-[380px_minmax(180px,1fr)_auto]">
-            {/* Rule results showing all 8 rules */}
+            {/* Rule results showing all 8 rules without contradiction */}
             <div className="flex flex-col justify-center rounded-lg border border-border bg-muted/40 px-3.5 py-2.5">
               <div className="mb-2 flex items-center justify-between">
                 <span className="text-xs font-semibold text-foreground">Rule results</span>
@@ -838,9 +866,11 @@ export function DocumentReview({ document, onClose }: { document: ReviewDocument
                     const ruleIssues = issues.filter((i) => getValidationGroup(i) === group);
                     const hasError = ruleIssues.some((i) => i.severity === "error");
                     const hasWarning = ruleIssues.some((i) => i.severity === "warning");
+                    const hasInfo = ruleIssues.some((i) => i.severity === "info");
 
                     let icon = <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-600" />;
                     let textColor = "text-emerald-700 dark:text-emerald-400 font-medium";
+                    let displayLabel = label;
 
                     if (hasError) {
                       icon = <CircleAlert className="h-3.5 w-3.5 shrink-0 text-rose-600" />;
@@ -848,12 +878,19 @@ export function DocumentReview({ document, onClose }: { document: ReviewDocument
                     } else if (hasWarning) {
                       icon = <CircleAlert className="h-3.5 w-3.5 shrink-0 text-amber-600" />;
                       textColor = "text-amber-700 dark:text-amber-400 font-medium";
+                    } else if (hasInfo) {
+                      // Informational note (e.g. duplicate seen in session)
+                      icon = <Info className="h-3.5 w-3.5 shrink-0 text-blue-600" />;
+                      textColor = "text-blue-700 dark:text-blue-400 font-medium";
+                      if (group === "duplicates") {
+                        displayLabel = "Seen in session (note)";
+                      }
                     }
 
                     return (
                       <div key={group} className={`flex items-center gap-1.5 ${textColor}`}>
                         {icon}
-                        <span className="truncate">{label}</span>
+                        <span className="truncate">{displayLabel}</span>
                       </div>
                     );
                   })}
@@ -878,45 +915,57 @@ export function DocumentReview({ document, onClose }: { document: ReviewDocument
               />
             </label>
 
-            {/* Actions: Send to Mock TMS blocked while a check has failed */}
-            <div className="flex flex-wrap items-end gap-2">
-              <Button
-                className="h-11 cursor-pointer font-medium"
-                variant={failedCount > 0 ? "default" : "outline"}
-                onClick={() => {
-                  setSentToReview(true);
-                  setMessage("Added to the broker review queue.");
-                }}
-              >
-                <Send className="mr-2 h-4 w-4" />
-                Send to Review
-              </Button>
-              <Button className="h-11 cursor-pointer font-medium" variant="outline" disabled={!fields} onClick={exportCsv}>
-                <Download className="mr-2 h-4 w-4" />
-                Export CSV
-              </Button>
-              <Button
-                className={`h-11 font-medium transition-all ${
-                  failedCount > 0 ? "cursor-not-allowed opacity-50" : "cursor-pointer"
-                }`}
-                variant={failedCount > 0 ? "outline" : "default"}
-                disabled={!fields || failedCount > 0}
-                title={
-                  failedCount > 0
-                    ? "Cannot send to TMS while checks have failed. Send to Review or correct the flagged items."
-                    : undefined
-                }
-                onClick={() => setMessage("Mock TMS accepted the rate confirmation.")}
-              >
-                <Truck className="mr-2 h-4 w-4" />
-                Send to Mock TMS
-              </Button>
+            {/* Actions: Send to Mock TMS with explanation and Review fix trigger */}
+            <div className="flex flex-col gap-1 items-start xl:items-end">
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  className="h-11 cursor-pointer font-medium"
+                  variant={failedCount > 0 ? "default" : "outline"}
+                  onClick={() => {
+                    setSentToReview(true);
+                    setMessage("Added to the broker review queue.");
+                  }}
+                >
+                  <Send className="mr-2 h-4 w-4" />
+                  Send to Review
+                </Button>
+                <Button className="h-11 cursor-pointer font-medium" variant="outline" disabled={!fields} onClick={exportCsv}>
+                  <Download className="mr-2 h-4 w-4" />
+                  Export CSV
+                </Button>
+                <Button
+                  className={`h-11 font-medium transition-all ${
+                    failedCount > 0 ? "cursor-not-allowed opacity-50" : "cursor-pointer"
+                  }`}
+                  variant={failedCount > 0 ? "outline" : "default"}
+                  disabled={!fields || failedCount > 0}
+                  onClick={() => setMessage("Mock TMS accepted the rate confirmation.")}
+                >
+                  <Truck className="mr-2 h-4 w-4" />
+                  Send to Mock TMS
+                </Button>
+              </div>
+
+              {/* Clear explanation of disabled button */}
+              {fields && failedCount > 0 && (
+                <p className="text-[11px] font-medium text-rose-700 dark:text-rose-400 flex items-center gap-1.5 pt-1">
+                  <CircleAlert className="h-3.5 w-3.5 shrink-0 text-rose-600" />
+                  <span>Resolve or confirm the totals check to send</span>
+                  <button
+                    type="button"
+                    onClick={() => setReviewingFix(true)}
+                    className="ml-1 text-primary underline underline-offset-2 hover:text-primary/80 font-semibold cursor-pointer"
+                  >
+                    Review fix
+                  </button>
+                </p>
+              )}
             </div>
           </div>
 
           {message && <p role="status" className="mx-auto mt-2 max-w-screen-2xl text-right text-xs text-emerald-700 dark:text-emerald-400">{message}</p>}
 
-          {/* Xiyon AI Branding & CTA with branded company email and prefilled subject */}
+          {/* Xiyon AI Branding & CTA with mailto subject */}
           <div className="mt-3 border-t border-border pt-3 text-center text-xs text-muted-foreground">
             Built by <span className="font-semibold text-foreground">Xiyon AI</span>. Send 3 redacted rate confirmations and I&apos;ll run them for you —{" "}
             <a
@@ -928,6 +977,122 @@ export function DocumentReview({ document, onClose }: { document: ReviewDocument
           </div>
         </footer>
       </main>
+
+      {/* Interactive Totals Discrepancy Fix Modal */}
+      {reviewingFix && fields && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+          <div className="relative w-full max-w-lg rounded-2xl border border-border bg-card p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
+                  <Scale className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-semibold text-foreground">Review Totals Discrepancy</h3>
+                  <p className="text-xs text-muted-foreground">Printed total does not match line items sum</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setReviewingFix(false)}
+                className="rounded-lg p-1 text-muted-foreground hover:bg-muted hover:text-foreground cursor-pointer"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="rounded-xl border border-border bg-muted/30 p-4 space-y-2 text-xs">
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground">Line items sum ({fields.line_items.length} items):</span>
+                <span className="font-mono font-semibold text-foreground">
+                  ${lineItemTotal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground">Printed total:</span>
+                <span className="font-mono font-semibold text-foreground">
+                  ${(fields.total_rate || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+              </div>
+              <div className="flex justify-between items-center border-t border-border/60 pt-2 text-rose-700 dark:text-rose-400 font-semibold">
+                <span>Difference:</span>
+                <span className="font-mono">
+                  ${totalDiff.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <p className="text-xs font-medium text-foreground">Select resolution to proceed:</p>
+
+              {/* Option A: Correct to line items */}
+              <button
+                type="button"
+                onClick={() => {
+                  const newTotal = lineItemTotal;
+                  setFields((prev) => (prev ? { ...prev, total_rate: newTotal } : null));
+                  setIssues((prev) => prev.filter((i) => getValidationGroup(i) !== "totals"));
+                  setMessage(`Corrected total rate to $${newTotal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}. Check passed.`);
+                  setReviewingFix(false);
+                }}
+                className="w-full text-left rounded-xl border border-primary/30 bg-primary/5 hover:bg-primary/10 p-3.5 transition-all flex items-start gap-3 group cursor-pointer"
+              >
+                <div className="mt-0.5 rounded-full bg-primary/20 p-1 text-primary shrink-0">
+                  <CheckCircle2 className="h-4 w-4" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-semibold text-foreground group-hover:text-primary transition-colors">
+                    Correct total to ${lineItemTotal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </p>
+                  <p className="mt-0.5 text-[11px] text-muted-foreground">
+                    Update the record total to match the individual line items sum.
+                  </p>
+                </div>
+              </button>
+
+              {/* Option B: Keep printed total and confirm */}
+              <button
+                type="button"
+                onClick={() => {
+                  const printed = fields.total_rate || 0;
+                  setIssues((prev) => {
+                    const withoutTotals = prev.filter((i) => getValidationGroup(i) !== "totals");
+                    return [
+                      ...withoutTotals,
+                      {
+                        field: "total_rate",
+                        severity: "info",
+                        message: `Printed total of $${printed.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} confirmed by broker (variance $${totalDiff.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} accepted).`,
+                      },
+                    ];
+                  });
+                  setMessage(`Printed total ($${printed.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}) confirmed by broker. Ready for Mock TMS.`);
+                  setReviewingFix(false);
+                }}
+                className="w-full text-left rounded-xl border border-border bg-card hover:bg-muted/40 p-3.5 transition-all flex items-start gap-3 group cursor-pointer"
+              >
+                <div className="mt-0.5 rounded-full bg-muted p-1 text-muted-foreground shrink-0">
+                  <ShieldCheck className="h-4 w-4" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-semibold text-foreground group-hover:text-primary transition-colors">
+                    Keep printed total (${(fields.total_rate || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}) &amp; confirm
+                  </p>
+                  <p className="mt-0.5 text-[11px] text-muted-foreground">
+                    Override check and record broker authorization for the printed amount.
+                  </p>
+                </div>
+              </button>
+            </div>
+
+            <div className="flex justify-end pt-1">
+              <Button variant="ghost" size="sm" onClick={() => setReviewingFix(false)}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -955,7 +1120,7 @@ function SampleRateConfirmation({ fields }: { fields: LoadDocumentT }) {
         <SampleValue label="Pickup" value={`${pickup?.city || "—"}, ${pickup?.state || ""} · ${pickup?.date || "—"}`} />
         <SampleValue label="Delivery" value={`${delivery?.city || "—"}, ${delivery?.state || ""} · ${delivery?.date || "—"}`} />
       </div>
-      <div className="mt-6 rounded bg-neutral-100 px-3 py-2 text-[10px] font-bold uppercase tracking-wider">Agreed rate</div>
+      <div className="mt-6 rounded bg-neutral-100 px-3 py-2 text-[10px] font-bold uppercase tracking-wider">Printed rate</div>
       <div className="mt-3 space-y-2 text-xs">
         {fields.line_items.map((item) => (
           <div className="flex justify-between" key={item.description}>
@@ -964,7 +1129,7 @@ function SampleRateConfirmation({ fields }: { fields: LoadDocumentT }) {
           </div>
         ))}
         <div className="flex justify-between border-t border-neutral-300 pt-2 font-bold">
-          <span>Total rate ({fields.currency || "USD"})</span>
+          <span>Printed total ({fields.currency || "USD"})</span>
           <span>{fields.total_rate === null ? "—" : `$${fields.total_rate.toLocaleString()}`}</span>
         </div>
       </div>

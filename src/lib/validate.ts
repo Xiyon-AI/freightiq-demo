@@ -94,7 +94,7 @@ export function validate(document: LoadDocumentT, seenLoadNumbers: ReadonlySet<s
     const diff = Math.abs(lineItemTotal - document.total_rate)
     if (Math.round(diff * 100) > 1) {
       const fmt = (val: number) => `$${val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-      add('total_rate', 'error', `Line items add up to ${fmt(lineItemTotal)}, but the total reads ${fmt(document.total_rate)} (difference ${fmt(diff)}).`)
+      add('total_rate', 'error', `Line items add up to ${fmt(lineItemTotal)}, but the printed total reads ${fmt(document.total_rate)} (difference ${fmt(diff)}).`)
     }
   }
 
