@@ -74,7 +74,7 @@ export function TopBar() {
           </Link>
 
           {/* Language Toggle */}
-          <div className="flex items-center gap-1 bg-neutral-100/80 rounded-lg p-0.5 border border-border/50">
+          {/* <div className="flex items-center gap-1 bg-neutral-100/80 rounded-lg p-0.5 border border-border/50">
             {locales.map(({ value, label }) => (
               <button
                 key={value}
@@ -88,7 +88,7 @@ export function TopBar() {
                 {label}
               </button>
             ))}
-          </div>
+          </div> */}
 
           <span className="hidden items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground sm:flex"><FlaskConical className="h-3 w-3 text-primary"/>Demo</span>
           <DropdownMenu>
