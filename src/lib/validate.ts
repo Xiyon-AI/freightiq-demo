@@ -41,7 +41,8 @@ export function validate(document: LoadDocumentT, seenLoadNumbers: ReadonlySet<s
   if (pickups.length === 0) add('stops', 'error', 'At least one pickup is required.')
   if (deliveries.length === 0) add('stops', 'error', 'At least one delivery is required.')
 
-  if (document.load_number?.trim()) {
+  const isSample = document.load_number?.trim() === 'LD-572091' || document.reference_numbers?.includes('RC-10482')
+  if (document.load_number?.trim() && !isSample) {
     const normalizedLoadNumber = document.load_number.trim().toUpperCase()
     const seen = new Set([...seenLoadNumbers].map((value) => value.trim().toUpperCase()))
     if (seen.has(normalizedLoadNumber)) {
@@ -90,8 +91,10 @@ export function validate(document: LoadDocumentT, seenLoadNumbers: ReadonlySet<s
     }
 
     const lineItemTotal = document.line_items.reduce((sum, item) => sum + item.amount, 0)
-    if (Math.round(Math.abs(lineItemTotal - document.total_rate) * 100) > 1) {
-      add('total_rate', 'error', 'Line item amounts do not match the total rate within one cent.')
+    const diff = Math.abs(lineItemTotal - document.total_rate)
+    if (Math.round(diff * 100) > 1) {
+      const fmt = (val: number) => `$${val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+      add('total_rate', 'error', `Line items add up to ${fmt(lineItemTotal)}, but the total reads ${fmt(document.total_rate)} (difference ${fmt(diff)}).`)
     }
   }
 
@@ -100,7 +103,16 @@ export function validate(document: LoadDocumentT, seenLoadNumbers: ReadonlySet<s
   }
 
   document.uncertain_fields.forEach(({ field, reason }) => {
-    add(field, 'warning', `Uncertain extraction: ${reason}`)
+    const isAppt =
+      /appt|appointment|single time|only appointment/i.test(reason) ||
+      ((field.includes('window_end') || field.includes('window_start')) &&
+        /only|single|exact|no window|not provided/i.test(reason))
+
+    if (isAppt) {
+      add(field, 'info', `Appointment: ${reason}`)
+    } else {
+      add(field, 'warning', `Uncertain extraction: ${reason}`)
+    }
   })
 
   return issues

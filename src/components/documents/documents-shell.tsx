@@ -49,8 +49,11 @@ export function DocumentsShell() {
           <div className="mt-2 rounded-xl border border-border bg-card p-5 text-center text-sm shadow-xs">
             <span className="font-semibold text-foreground">Built by Xiyon AI.</span>{" "}
             <span className="text-muted-foreground">Send 3 redacted rate confirmations and I&apos;ll run them for you —</span>{" "}
-            <a href="mailto:raiyanjiyon814@gmail.com" className="font-medium text-primary underline underline-offset-2 hover:text-primary/80 transition-colors">
-              raiyanjiyon814@gmail.com
+            <a
+              href="mailto:hello@xiyonai.com?subject=FreightIQ%20Demo%20-%20Rate%20Confirmations"
+              className="font-medium text-primary underline underline-offset-2 hover:text-primary/80 transition-colors"
+            >
+              hello@xiyonai.com
             </a>
           </div>
         </div>
