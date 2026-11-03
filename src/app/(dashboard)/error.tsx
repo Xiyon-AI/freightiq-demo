@@ -3,7 +3,6 @@
 import { useEffect } from 'react'
 import { AlertCircle, RefreshCw, Home } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { appPath } from '@/lib/app-path'
 
 export default function DashboardError({
   error,
@@ -48,7 +47,7 @@ export default function DashboardError({
           </Button>
           <Button
             variant="outline"
-            onClick={() => window.location.href = appPath('/documents')}
+            onClick={() => window.location.href = '/documents'}
             className="gap-2"
           >
             <Home className="w-4 h-4" />

@@ -1,6 +1,13 @@
 import Link from "next/link";
 import { CheckCircle2, FileCheck2, FileUp, FileText, Send, ShieldCheck, Table2, Truck } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Demo Guide",
+  description: "How to process rate confirmations in the FreightIQ broker demo",
+  robots: { index: false, follow: false },
+};
 
 const requiredFeatures = [
   { title: "PDF upload", description: "Bring a carrier rate confirmation PDF into the demo." },

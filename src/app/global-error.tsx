@@ -2,7 +2,6 @@
 
 import { useEffect } from 'react'
 import { AlertCircle } from 'lucide-react'
-import { appPath } from '@/lib/app-path'
 
 export default function GlobalError({
   error,
@@ -47,7 +46,7 @@ export default function GlobalError({
                 Try again
               </button>
               <button
-                onClick={() => window.location.href = appPath('/')}
+                onClick={() => window.location.href = '/documents'}
                 className="px-6 py-3 bg-card hover:bg-muted/30 dark:bg-gray-800 dark:hover:bg-gray-700 text-foreground dark:text-white border border-border dark:border-gray-700 rounded-lg font-medium transition-colors"
               >
                 Go to homepage
