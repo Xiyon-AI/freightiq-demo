@@ -47,7 +47,7 @@ function NavItem({ icon, label, href = "#", badge, active, onClick, onPrefetch }
 export function MobileNav() {
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
-  const prefetchRoute = useCallback((_href: string) => {}, [])
+  const prefetchRoute = useCallback(() => {}, [])
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -65,7 +65,7 @@ export function MobileNav() {
         </SheetHeader>
         {/* Navigation */}
         <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
-          <NavItem href="/documents" onClick={() => setOpen(false)} icon={<Files className="w-5 h-5" strokeWidth={2} />} label="Documents" active={pathname?.startsWith('/documents')} onPrefetch={() => prefetchRoute('/documents')} />
+          <NavItem href="/documents" onClick={() => setOpen(false)} icon={<Files className="w-5 h-5" strokeWidth={2} />} label="Documents" active={pathname?.startsWith('/documents')} onPrefetch={prefetchRoute} />
         </nav>
 
         <div className="border-t border-border">

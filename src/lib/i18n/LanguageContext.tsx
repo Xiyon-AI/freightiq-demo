@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback, useSyncExternalStore, type ReactNode } from 'react'
 import en from './en.json'
 import bn from './bn.json'
 
@@ -22,31 +22,44 @@ const LanguageContext = createContext<LanguageContextValue>({
 
 const STORAGE_KEY = 'freightiq-locale'
 
-export function LanguageProvider({ children }: { children: ReactNode }) {
-  const [locale, setLocaleState] = useState<Locale>('en')
+function subscribe(callback: () => void) {
+  window.addEventListener('storage', callback)
+  window.addEventListener('freightiq-locale-change', callback)
+  return () => {
+    window.removeEventListener('storage', callback)
+    window.removeEventListener('freightiq-locale-change', callback)
+  }
+}
 
-  // Hydrate from localStorage on mount
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY) as Locale | null
-      if (stored === 'en' || stored === 'bn') {
-        setLocaleState(stored)
-      } else if (stored === 'it') {
-        // Migrate users who previously selected Italian to Bangla.
-        setLocaleState('bn')
-        localStorage.setItem(STORAGE_KEY, 'bn')
-      }
-    } catch {
-      // SSR or storage unavailable — ignore
+function getSnapshot(): Locale {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY)
+    if (stored === 'en' || stored === 'bn') return stored
+    if (stored === 'it') {
+      localStorage.setItem(STORAGE_KEY, 'bn')
+      return 'bn'
     }
-  }, [])
+  } catch {
+    // ignore
+  }
+  return 'en'
+}
+
+function getServerSnapshot(): Locale {
+  return 'en'
+}
+
+export function LanguageProvider({ children }: { children: ReactNode }) {
+  const [fallbackLocale, setFallbackLocale] = useState<Locale | null>(null)
+  const storeLocale = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot)
+  const locale = fallbackLocale ?? storeLocale
 
   const setLocale = useCallback((newLocale: Locale) => {
-    setLocaleState(newLocale)
     try {
       localStorage.setItem(STORAGE_KEY, newLocale)
+      window.dispatchEvent(new Event('freightiq-locale-change'))
     } catch {
-      // storage unavailable — ignore
+      setFallbackLocale(newLocale)
     }
   }, [])
 

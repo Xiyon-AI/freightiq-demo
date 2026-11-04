@@ -42,13 +42,13 @@ function NavItem({ icon, label, href = "#", badge, active, onPrefetch }: NavItem
 export function Sidebar() {
   const pathname = usePathname()
   // Prefetch dashboard routes on hover.
-  const prefetchRoute = useCallback((_href: string) => {}, [])
+  const prefetchRoute = useCallback(() => {}, [])
 
   return (
     <aside className="hidden md:flex w-64 border-r border-border bg-background flex-col fixed left-0 top-16 h-[calc(100vh-4rem)] overflow-y-auto z-20">
       {/* Navigation */}
       <nav className="flex-1 px-4 py-6 space-y-1">
-        <NavItem href="/documents" icon={<Files className="w-5 h-5" strokeWidth={2} />} label="Documents" active={pathname?.startsWith('/documents')} onPrefetch={() => prefetchRoute('/documents')} />
+        <NavItem href="/documents" icon={<Files className="w-5 h-5" strokeWidth={2} />} label="Documents" active={pathname?.startsWith('/documents')} onPrefetch={prefetchRoute} />
       </nav>
 
       {/* Active organization switcher */}

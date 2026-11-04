@@ -95,18 +95,17 @@ const FIELD_META = {
   uncertain_fields: { label: "Uncertain Fields", icon: CircleAlert },
 } satisfies Record<keyof LoadDocumentT, { label: string; icon: typeof FileText }>;
 
-const VALIDATION_GROUPS = [
-  "totals",
-  "dates",
-  "required",
-  "carrier IDs",
-  "sanity ranges",
-  "state codes",
-  "duplicates",
-  "model uncertainty",
-] as const;
+type ValidationGroup =
+  | "totals"
+  | "dates"
+  | "required"
+  | "carrier IDs"
+  | "sanity ranges"
+  | "state codes"
+  | "duplicates"
+  | "model uncertainty";
 
-const ALL_RULES: Array<{ group: typeof VALIDATION_GROUPS[number]; label: string }> = [
+const ALL_RULES: Array<{ group: ValidationGroup; label: string }> = [
   { group: "totals", label: "Totals match" },
   { group: "dates", label: "Dates in order" },
   { group: "required", label: "Required fields present" },
@@ -117,7 +116,7 @@ const ALL_RULES: Array<{ group: typeof VALIDATION_GROUPS[number]; label: string 
   { group: "model uncertainty", label: "Extraction confident" },
 ];
 
-function getValidationGroup(issue: ValidationIssue): typeof VALIDATION_GROUPS[number] {
+function getValidationGroup(issue: ValidationIssue): ValidationGroup {
   const message = issue.message.toLowerCase();
   if (message.includes("line item") || message.includes("line items add up") || message.includes("totals") || message.includes("match the total rate") || message.includes("printed total")) {
     return "totals";
@@ -219,32 +218,35 @@ export function DocumentReview({ document, onClose }: { document: ReviewDocument
   const [isSampleDoc, setIsSampleDoc] = useState(Boolean(document.sample));
   const [fields, setFields] = useState<LoadDocumentT | null>(document.sample ? SAMPLE_FIELDS : null);
   const [issues, setIssues] = useState<ValidationIssue[]>([]);
-  const [extractState, setExtractState] = useState<ExtractionState>(document.sample ? "success" : "idle");
+  const [extractState, setExtractState] = useState<ExtractionState>(
+    document.sample ? "success" : document.file ? "loading" : "idle"
+  );
   const [extractError, setExtractError] = useState("");
   const [expandedStops, setExpandedStops] = useState(true);
   const [expandedLineItems, setExpandedLineItems] = useState(true);
   const [reviewingFix, setReviewingFix] = useState(false);
   const isPdf = document.filename.toLowerCase().endsWith(".pdf");
 
-  const runExtraction = useCallback(async () => {
-    if (!document.file || isSampleDoc) return;
-    setExtractState("loading");
-    setExtractError("");
-    try {
-      const result = await extractFileOnce(document.file);
-      setFields(result.fields);
-      setIssues(Array.isArray(result.issues) ? result.issues : []);
-      setExtractState("success");
-    } catch (error) {
-      setExtractError(error instanceof Error ? error.message : "Document extraction failed.");
-      setExtractState("error");
-    }
-  }, [document.file, isSampleDoc]);
-
   useEffect(() => {
     if (!document.file || document.sample) return;
-    void runExtraction();
-  }, [document.file, document.sample, runExtraction]);
+    let active = true;
+    extractFileOnce(document.file)
+      .then((result) => {
+        if (!active) return;
+        setFields(result.fields);
+        setIssues(Array.isArray(result.issues) ? result.issues : []);
+        setExtractState("success");
+      })
+      .catch((error: unknown) => {
+        if (!active) return;
+        setExtractError(error instanceof Error ? error.message : "Document extraction failed.");
+        setExtractState("error");
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [document.file, document.sample]);
 
   const switchToSample = useCallback(() => {
     setIsSampleDoc(true);
@@ -258,9 +260,20 @@ export function DocumentReview({ document, onClose }: { document: ReviewDocument
   const retryExtraction = useCallback(() => {
     if (document.file) {
       extractionRequests.delete(document.file);
-      void runExtraction();
+      setExtractState("loading");
+      setExtractError("");
+      extractFileOnce(document.file)
+        .then((result) => {
+          setFields(result.fields);
+          setIssues(Array.isArray(result.issues) ? result.issues : []);
+          setExtractState("success");
+        })
+        .catch((error: unknown) => {
+          setExtractError(error instanceof Error ? error.message : "Document extraction failed.");
+          setExtractState("error");
+        });
     }
-  }, [document.file, runExtraction]);
+  }, [document.file]);
 
   const exportCsv = () => {
     if (!fields) return;
